@@ -16,7 +16,6 @@ class MessageCodec {
         serializersModule = SerializersModule {
             polymorphic(Payload::class) {
                 subclass(SosPayload::class)
-                subclass(RespondPayload::class)
             }
         }
 

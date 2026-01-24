@@ -45,21 +45,4 @@ class ReachControlUseCase(
         transport.broadcast(codec.encode(sos))
     }
 
-    /**
-     * Respond 메시지 전송 (구조대 등)
-     */
-    fun sendRespond(
-        sosMsgId: String,
-        etaMinutes: Int? = null,
-        note: String? = null
-    ) {
-        val respond = MessageFactory.newRespond(
-            senderId = mySenderId,
-            sosMsgId = sosMsgId,
-            etaMinutes = etaMinutes,
-            note = note
-        )
-
-        transport.broadcast(codec.encode(respond))
-    }
 }

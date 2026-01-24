@@ -4,6 +4,5 @@ import kotlinx.serialization.Serializable
 
 @Serializable
 enum class MessageType {
-    SOS,
-    RESPOND
+    SOS
 }

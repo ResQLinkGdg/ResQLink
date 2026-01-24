@@ -25,11 +25,3 @@ data class SosPayload(
     val lng: Double? = null,    // 경도
     val text: String? = null    // 요청 자유 서술
 ) : Payload
-
-@Serializable
-@SerialName("RESPOND")
-data class RespondPayload(
-    val sosMsgId: String,           // original SOS msgId
-    val etaMinutes: Int? = null,    // 도착까지 예상 시간
-    val note: String? = null        // 추가 메세지
-) : Payload
