@@ -18,6 +18,7 @@ object MessageFactory {
             senderId = senderId,
             timestampMs = timestampMs,
             ttl = ttl,
+            hops = emptyList(), // ⭐ 명시
             payload = SosPayload(lat = lat, lng = lng, text = text)
         )
 
@@ -35,6 +36,7 @@ object MessageFactory {
             senderId = senderId,
             timestampMs = timestampMs,
             ttl = ttl,
+            hops = emptyList(), // ⭐ 명시
             payload = RespondPayload(sosMsgId = sosMsgId, etaMinutes = etaMinutes, note = note)
         )
 }

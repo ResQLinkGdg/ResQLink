@@ -30,7 +30,11 @@ class NearbyTransport(
     private val payloadCallback = object : PayloadCallback() {
         override fun onPayloadReceived(endpointId: String, payload: Payload) {
             payload.asBytes()?.let {
-                callbacks.onPayloadReceived(endpointId, it)
+                callbacks.onPayloadReceived(
+                    fromEndpointId = endpointId,
+                    bytes = it,
+                    rssi = null // ⭐ Nearby에서는 못 구함
+                )
             }
         }
 

@@ -11,6 +11,7 @@ data class MessageEnvelope(
     val senderId: String,           // stable device hash/uuid
     val timestampMs: Long,          // epoch millis
     val ttl: Int,                   // hop limit
+    val hops: List<HopSignal> = emptyList(), // ⭐ rssi 정보를 담는 리스트 추가
     val payload: Payload
 )
 

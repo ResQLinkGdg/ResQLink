@@ -7,5 +7,10 @@ interface TransportCallbacks {
     fun onConnected(endpointId: String)
     fun onDisconnected(endpointId: String)
 
-    fun onPayloadReceived(fromEndpointId: String, bytes: ByteArray)
+    // ⭐ rssi nullable로 확장
+    fun onPayloadReceived(
+        fromEndpointId: String,
+        bytes: ByteArray,
+        rssi: Int? = null
+    )
 }
