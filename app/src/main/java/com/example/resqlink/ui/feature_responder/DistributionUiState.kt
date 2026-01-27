@@ -10,5 +10,8 @@ data class DistributionUiState(
     // history (옵션)
     val showHistory: Boolean = false,
     val historyMinutes: Int = 30,
-    val history: List<DistributionPoint> = emptyList()
+    val history: List<DistributionPoint> = emptyList(),
+
+    // 에러 표시용(선택)
+    val errorMessage: String? = null
 )

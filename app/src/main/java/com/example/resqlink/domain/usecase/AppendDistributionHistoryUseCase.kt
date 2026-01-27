@@ -1,7 +1,7 @@
 package com.example.resqlink.domain.usecase
 
 import com.example.resqlink.domain.gateway.DistributionHistoryStore
-import com.example.resqlink.domain.model.ProximityBucket
+import com.example.resqlink.domain.model.proximity.ProximityBucket
 import com.example.resqlink.domain.model.distribution.DistributionPoint
 import com.example.resqlink.domain.model.distribution.DistributionSnapshot
 

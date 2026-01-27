@@ -1,12 +1,12 @@
 package com.example.resqlink.domain.usecase
 
 import com.example.resqlink.domain.gateway.MeshStore
-import com.example.resqlink.domain.model.ProximityBucket
-import com.example.resqlink.domain.model.RadarDot
-import com.example.resqlink.domain.model.RingGroup
+import com.example.resqlink.domain.model.proximity.ProximityBucket
+import com.example.resqlink.domain.model.distribution.RadarDot
+import com.example.resqlink.domain.model.distribution.RingGroup
 import com.example.resqlink.domain.model.distribution.DistributionSnapshot
 import com.example.resqlink.domain.policy.DotLayoutPolicy
-import com.example.resqlink.domain.policy.RangingPolicy
+import com.example.resqlink.domain.policy.ranging.RangingPolicy
 
 class GetDistributionSnapshotUseCase(
     private val meshStore: MeshStore,

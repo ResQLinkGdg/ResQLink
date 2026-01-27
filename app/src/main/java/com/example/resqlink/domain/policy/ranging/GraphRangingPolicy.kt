@@ -1,10 +1,11 @@
-package com.example.resqlink.domain.policy
+package com.example.resqlink.domain.policy.ranging
 
 import com.example.resqlink.domain.model.NodeSummary
-import com.example.resqlink.domain.model.ProximityBucket
-import com.example.resqlink.domain.model.ProximityConfidence
-import com.example.resqlink.domain.model.ProximityHint
 import com.example.resqlink.domain.model.ProximitySource
+import com.example.resqlink.domain.model.proximity.ProximityBucket
+import com.example.resqlink.domain.model.proximity.ProximityConfidence
+import com.example.resqlink.domain.model.proximity.ProximityHint
+import com.example.resqlink.domain.policy.ranging.RangingPolicy
 import kotlin.math.max
 
 /**
@@ -22,7 +23,7 @@ class GraphRangingPolicy(
     // 최근성(초) 기준: 신호가 너무 오래되면 confidence 낮추기
     private val freshSec: Int = 30,
     private val staleSec: Int = 120
-):RangingPolicy {
+): RangingPolicy {
     override fun hintFor(node: NodeSummary, now: Long): ProximityHint {
         val ageSec = max(0, ((now - node.lastSeenAt) / 1000L).toInt())
         val hop = node.minHopFromResponder

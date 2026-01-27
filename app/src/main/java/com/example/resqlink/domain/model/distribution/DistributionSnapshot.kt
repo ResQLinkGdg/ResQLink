@@ -1,8 +1,8 @@
 package com.example.resqlink.domain.model.distribution
 
-import com.example.resqlink.domain.model.ProximityBucket
-import com.example.resqlink.domain.model.RadarDot
-import com.example.resqlink.domain.model.RingGroup
+import com.example.resqlink.domain.model.proximity.ProximityBucket
+import com.example.resqlink.domain.model.distribution.RadarDot
+import com.example.resqlink.domain.model.distribution.RingGroup
 
 data class DistributionSnapshot(
     val updatedAt: Long,
