@@ -28,9 +28,16 @@ class SosInboxViewModel(
             reachControlUseCase.incomingSosFlow.collect { sos ->
                 val uiModel = sos.toUiModel()
 
-                _state.update {
-                    it.copy(
-                        reports = listOf(uiModel) + it.reports
+                _state.update {currentState->
+                    // 중복 ID 제거 로직 추가
+                    // 1. 기존 리스트와 새 아이템을 합친 후
+                    val newList = listOf(uiModel) + currentState.reports
+
+                    // 2. ID를 기준으로 중복을 제거하여 유일한 아이템만 남깁니다.
+                    val uniqueList = newList.distinctBy { it.id }
+
+                    currentState.copy(
+                        reports = uniqueList
                     )
                 }
             }
