@@ -78,4 +78,7 @@ dependencies {
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
+
+    // 7. Material Icons (Outlined / Filled 등)
+    implementation(libs.androidx.compose.material.icons.extended)
 }
