@@ -96,13 +96,15 @@ class RadarLayoutEngine(
                     if (n == 0) continue
 
                     for ((i, s) in group.withIndex()) {
-                        // 가운데 기준 좌우 슬롯 배치
+                        val yBase = cy - radiusForBucket(radii, b)
+                        val n = group.size
+
+                        // ⭐ 동적 간격 계산: 개수가 적으면 촘촘하게, 많으면 maxXSpreadPx까지 확장
+                        val currentSpacing = if (n <= 1) 0f
+                        else min(cfg.slotSpacingPx, (cfg.maxXSpreadPx * 2) / (n + 1))
+
                         val centerIndex = (n - 1) / 2f
-                        var x = cx + (i - centerIndex) * cfg.slotSpacingPx
-
-                        // 좌우 퍼짐 제한
-                        x = x.coerceIn(cx - cfg.maxXSpreadPx, cx + cfg.maxXSpreadPx)
-
+                        var x = cx + (i - centerIndex) * currentSpacing
                         // 미세 지터(고정 랜덤)로 겹침/일렬 느낌 완화
                         x += jitterSignedPx(s.key, "x", cfg.offJitterPx)
                         var y = yBase + jitterSignedPx(s.key, "y", cfg.offJitterPx)

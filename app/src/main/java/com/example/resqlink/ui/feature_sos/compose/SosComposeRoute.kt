@@ -3,15 +3,17 @@ package com.example.resqlink.ui.feature_sos.compose
 import androidx.compose.runtime.*
 import androidx.lifecycle.viewmodel.compose.viewModel
 import androidx.navigation.NavController
+import com.example.resqlink.data.store.IdentityStore
 import com.example.resqlink.domain.usecase.reach.ReachControlUseCase
 
 @Composable
 fun SosComposeRoute(
     navController: NavController,
-    reachControlUseCase: ReachControlUseCase
+    reachControlUseCase: ReachControlUseCase,
+    identityStore: IdentityStore
 ) {
     val viewModel: SosComposeViewModel = viewModel(
-        factory = SosComposeViewModelFactory(reachControlUseCase)
+        factory = SosComposeViewModelFactory(reachControlUseCase, identityStore )
     )
 
     val state by viewModel.state.collectAsState()

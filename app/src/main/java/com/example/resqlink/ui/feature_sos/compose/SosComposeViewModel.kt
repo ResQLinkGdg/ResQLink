@@ -2,6 +2,7 @@ package com.example.resqlink.ui.feature_sos.compose
 
 import androidx.lifecycle.ViewModel
 import androidx.lifecycle.viewModelScope
+import com.example.resqlink.data.store.IdentityStore
 import com.example.resqlink.domain.usecase.reach.ReachControlUseCase
 import com.example.resqlink.platform.reach.protocol.sos.SosSituation
 import com.example.resqlink.platform.reach.protocol.sos.SosUrgency
@@ -15,7 +16,8 @@ import kotlinx.coroutines.flow.update
 import kotlinx.coroutines.launch
 
 class SosComposeViewModel(
-    private val reachControlUseCase: ReachControlUseCase
+    private val reachControlUseCase: ReachControlUseCase,
+    private val identityStore: IdentityStore
 ) : ViewModel() {
 
     private val _state = MutableStateFlow(SosComposeUiState())
@@ -60,6 +62,7 @@ class SosComposeViewModel(
         viewModelScope.launch {
             _state.update { it.copy(sending = true) }
 
+            val myId = identityStore.getMyId()
             val ttl = calculateTtl(current.urgency!!)
             val urgency = mapUrgency(current.urgency)
             val situation = mapSituation(current.situation!!)

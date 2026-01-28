@@ -11,10 +11,10 @@ import com.example.resqlink.platform.reach.protocol.sos.SosUrgency
 import kotlinx.coroutines.flow.Flow
 
 class ReachControlUseCase(
+    private val mySenderId: String,
     private val transport: Transport,
     private val locationProvider: LocationProvider,
     private val codec: MessageCodec,
-    private val mySenderId: String,
     private val applyIncomingSos: ApplyIncomingSosUsecase
 ) {
 

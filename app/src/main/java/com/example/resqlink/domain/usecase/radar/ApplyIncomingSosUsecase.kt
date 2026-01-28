@@ -13,7 +13,8 @@ import kotlinx.coroutines.flow.SharedFlow
 
 class ApplyIncomingSosUsecase(
     private val store: RadarStateStore,
-    private val locationProvider: LocationProvider
+    private val locationProvider: LocationProvider,
+    private val mySenderId: String
 ) {
 
     private val _incomingSosEvents =
@@ -29,6 +30,12 @@ class ApplyIncomingSosUsecase(
         rssiDbm: Int?
     ) {
         if (envelope.type != MessageType.SOS) return
+
+        val senderId= extractOriginId(envelope)
+        //  필터링 추가: 이 메시지를 처음 만든 사람이 '나'라면 레이더에 표시하지 않음
+        if (senderId == mySenderId) {
+            return
+        }
 
         val payload = envelope.payload as? SosPayload ?: return
 

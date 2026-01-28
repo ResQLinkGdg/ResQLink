@@ -12,6 +12,7 @@ import androidx.navigation.compose.NavHost
 import androidx.navigation.compose.composable
 import androidx.navigation.compose.currentBackStackEntryAsState
 import androidx.navigation.compose.rememberNavController
+import com.example.resqlink.data.store.IdentityStore
 import com.example.resqlink.data.store.InMemoryRadarStateStore
 import com.example.resqlink.domain.gateway.Transport
 import com.example.resqlink.domain.usecase.radar.ApplyIncomingSosUsecase
@@ -42,7 +43,8 @@ class MainActivity : ComponentActivity() {
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val mySenderId = NearbyConfig.deviceName()
+        val identityStore = IdentityStore(this)
+        val mySenderId = identityStore.getMyId()
         val codec = MessageCodec()
         val dedup = InMemoryDedupStore()
         val locationProvider = AndroidLocationProvider(this)
@@ -51,7 +53,8 @@ class MainActivity : ComponentActivity() {
 
         val applyIncomingSos = ApplyIncomingSosUsecase(
             store = store,
-            locationProvider = locationProvider
+            locationProvider = locationProvider,
+            mySenderId = mySenderId
         )
 
         val receiver = ReachReceiver(
@@ -135,7 +138,7 @@ class MainActivity : ComponentActivity() {
                 NavHost(
                     navController = navController,
                     startDestination = AppRoute.SosInbox.route,
-                    modifier = Modifier.padding(padding)
+                    modifier = Modifier.padding(padding),
                 ) {
 
                     composable(AppRoute.SosInbox.route) {
@@ -157,7 +160,8 @@ class MainActivity : ComponentActivity() {
                     composable(AppRoute.SosCompose.route) {
                         SosComposeRoute(
                             navController = navController,
-                            reachControlUseCase = reachControl
+                            reachControlUseCase = reachControl,
+                            identityStore = identityStore
                         )
                     }
 
