@@ -8,5 +8,6 @@ data class RadarTarget(
     val bucket: RangeBucket,
     val approxRangeText: String?,
     val bearingDeg: Double?,    // GPS ON에서만 의미
-    val hasGps: Boolean
+    val hasGps: Boolean,
+    val distanceM: Double?
 )

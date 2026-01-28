@@ -71,7 +71,7 @@ class MainActivity : ComponentActivity() {
             callbacks = receiver,
             serviceId = NearbyConfig.SERVICE_ID,
             localEndpointName = NearbyConfig.deviceName(),
-            strategy = Strategy.P2P_STAR
+            strategy = Strategy.P2P_CLUSTER
         )
 
         val reachControl = ReachControlUseCase(
