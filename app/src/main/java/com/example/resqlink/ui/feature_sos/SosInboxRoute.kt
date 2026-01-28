@@ -6,7 +6,8 @@ import com.example.resqlink.ui.feature_sos.model.*
 
 @Composable
 fun SosInboxRoute(
-    viewModel: SosInboxViewModel = viewModel()
+    viewModel: SosInboxViewModel = viewModel(),
+    onOpenRadar: () -> Unit
 ) {
     val state by viewModel.state.collectAsState()
 
@@ -23,6 +24,7 @@ fun SosInboxRoute(
         state = state,
         reports = filtered,
         onSelectFilter = viewModel::selectFilter,
-        onClickSos = viewModel::onClickSos
+        onClickSos = viewModel::onClickSos,
+        onOpenRadar = onOpenRadar
     )
 }

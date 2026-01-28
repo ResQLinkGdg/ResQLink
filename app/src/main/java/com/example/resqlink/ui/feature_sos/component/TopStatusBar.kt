@@ -3,6 +3,8 @@ package com.example.resqlink.ui.feature_sos.component
 import androidx.compose.foundation.background
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.shape.CircleShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.outlined.MyLocation
 import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
@@ -15,7 +17,8 @@ import androidx.compose.ui.unit.sp
 fun TopStatusBar(
     isDisasterMode: Boolean,
     nearbyCount: Int,
-    batteryPercent: Int
+    batteryPercent: Int,
+    onClickRadar: () -> Unit   // 👈 추가
 ) {
     Column {
         // 상단 타이틀 바
@@ -46,6 +49,10 @@ fun TopStatusBar(
             )
 
             Spacer(Modifier.weight(1f))
+
+            IconButton(onClick = onClickRadar) {
+                Icon(Icons.Outlined.MyLocation, contentDescription = "Radar")
+            }
 
             AssistChip(
                 onClick = {},

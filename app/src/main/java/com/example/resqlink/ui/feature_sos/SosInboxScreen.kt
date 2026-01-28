@@ -22,20 +22,16 @@ fun SosInboxScreen(
     state: SosUiState,
     reports: List<SosReportUiModel>,
     onSelectFilter: (SosFilter) -> Unit,
-    onClickSos: () -> Unit
+    onClickSos: () -> Unit,
+    onOpenRadar: () -> Unit    // 👈 추가
 ) {
     Scaffold(
         topBar = {
             TopStatusBar(
                 isDisasterMode = state.isDisasterMode,
                 nearbyCount = state.nearbyCount,
-                batteryPercent = state.batteryPercent
-            )
-        },
-        bottomBar = {
-            BottomNavBar(
-                selected = BottomTab.SOS,
-                onSelect = {}
+                batteryPercent = state.batteryPercent,
+                onClickRadar = onOpenRadar
             )
         }
     ) { padding ->

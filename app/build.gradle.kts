@@ -48,6 +48,7 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.foundation)
+    implementation(libs.androidx.navigation.compose)
 
     // 2. Compose BOM 및 관련 라이브러리 (버전 충돌 방지)
     val composeBom = platform(libs.androidx.compose.bom)
