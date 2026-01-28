@@ -26,6 +26,8 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
 import androidx.compose.material.icons.filled.Add
 import androidx.compose.ui.text.font.FontWeight
@@ -44,6 +46,7 @@ fun RadarScreen(
     modifier: Modifier = Modifier
 ) {
     val signals = uiState.signals
+    val scrollState = rememberScrollState()
 
     val nearCount = remember(signals) { signals.count { it.bucket == com.example.resqlink.domain.model.Range.RangeBucket.NEAR } }
     val midCount = remember(signals) { signals.count { it.bucket == com.example.resqlink.domain.model.Range.RangeBucket.MID } }
@@ -58,6 +61,7 @@ fun RadarScreen(
         modifier
             .fillMaxSize()
             .background(MaterialTheme.colorScheme.background)
+            .verticalScroll(scrollState)
             .padding(horizontal = 16.dp)
             .padding(top = 10.dp)
     ) {
@@ -667,3 +671,39 @@ private fun stableAngleDeg(key: String): Double {
 }
 
 private fun Double.toRadians(): Double = this * PI / 180.0
+
+@Composable
+private fun StatisticsSection(signals: List<RadarSignalUi>) {
+    val now = System.currentTimeMillis()
+    val recentCount = signals.count {
+        val age = ((now - (it.lastSeenMs ?: now)) / 60000L).toInt()
+        age <= 5
+    }
+
+    Card(
+        modifier = Modifier.fillMaxWidth(),
+        shape = RoundedCornerShape(18.dp),
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp),
+        border = BorderStroke(1.dp, Color(0xFFE9EEF6))
+    ) {
+        Column(Modifier.padding(20.dp)) {
+            Text("통계", style = MaterialTheme.typography.titleMedium, fontWeight = FontWeight.Bold)
+            Spacer(Modifier.height(16.dp))
+
+            StatRow("SOS 신호", "${signals.size}", Color(0xFFE11D48))
+            Divider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(vertical = 12.dp))
+            StatRow("최근 5분 이내", "$recentCount", Color(0xFF10B981))
+            Divider(color = Color(0xFFF1F5F9), thickness = 1.dp, modifier = Modifier.padding(vertical = 12.dp))
+            StatRow("긴급 트리아지", "4", Color(0xFFE11D48)) // 트리아지 로직은 필요시 추가
+        }
+    }
+}
+
+@Composable
+private fun StatRow(label: String, value: String, valueColor: Color) {
+    Row(Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.SpaceBetween) {
+        Text(label, style = MaterialTheme.typography.bodyLarge, color = Color.Gray)
+        Text(value, style = MaterialTheme.typography.titleLarge, fontWeight = FontWeight.Bold, color = valueColor)
+    }
+}
