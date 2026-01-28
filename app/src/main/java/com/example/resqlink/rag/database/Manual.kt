@@ -3,15 +3,18 @@ package com.example.resqlink.rag.database
 import androidx.room.Entity
 import androidx.room.PrimaryKey
 import androidx.room.TypeConverter
+import androidx.room.TypeConverters
+
 
 @Entity(tableName = "manual_table")
+@TypeConverters(Converters::class)
 data class Manual(
     @PrimaryKey val id: String,
     val title: String,
     val content: String,
     val keywords: String,
     val category: String,
-    val embedding: FloatArray? = null // 텍스트의 '의미 숫자'가 들어갈 곳
+    val embedding: FloatArray? = null
 ) {
     override fun equals(other: Any?): Boolean {
         if (this === other) return true
@@ -40,11 +43,20 @@ data class Manual(
     }
 }
 
-// 2. FloatArray 처리를 위한 컨버터
+// 3. FloatArray 처리를 위한 컨버터 (내용은 아주 좋습니다!)
 class Converters {
     @TypeConverter
-    fun fromFloatArray(array: FloatArray?): String? = array?.joinToString(",")
+    fun fromFloatArray(array: FloatArray?): String? {
+        return array?.joinToString(",")
+    }
 
     @TypeConverter
-    fun toFloatArray(data: String?): FloatArray? = data?.split(",")?.map { it.toFloat() }?.toFloatArray()
+    fun toFloatArray(data: String?): FloatArray? {
+        if (data.isNullOrEmpty()) return null // 빈 문자열 에러 방지용 안전장치 추가
+        return try {
+            data.split(",").map { it.trim().toFloat() }.toFloatArray()
+        } catch (e: NumberFormatException) {
+            null // 변환 실패 시 null 반환
+        }
+    }
 }
