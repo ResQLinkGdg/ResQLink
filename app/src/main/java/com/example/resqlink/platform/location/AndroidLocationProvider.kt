@@ -11,7 +11,7 @@ import kotlinx.coroutines.suspendCancellableCoroutine
 import kotlin.coroutines.resume
 
 class AndroidLocationProvider(
-    context: Context
+    private val context: Context
 ) : LocationProvider {
 
     private val client = LocationServices
@@ -21,7 +21,7 @@ class AndroidLocationProvider(
         // 1️⃣ 권한 체크
         val hasPermission =
             ContextCompat.checkSelfPermission(
-                client.applicationContext,
+                context,
                 Manifest.permission.ACCESS_FINE_LOCATION
             ) == PackageManager.PERMISSION_GRANTED
 

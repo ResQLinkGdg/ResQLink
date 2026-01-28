@@ -3,6 +3,7 @@ plugins {
     alias(libs.plugins.kotlin.android)
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
+    alias(libs.plugins.compose.compiler)
 }
 
 android {
@@ -27,6 +28,7 @@ android {
             )
         }
     }
+
     compileOptions {
         sourceCompatibility = JavaVersion.VERSION_17
         targetCompatibility = JavaVersion.VERSION_17
@@ -34,33 +36,45 @@ android {
     kotlinOptions {
         jvmTarget = "17"
     }
+    buildFeatures {
+        compose = true
+    }
 }
 
 dependencies {
-
+    // 1. Android 기본 & UI
     implementation(libs.androidx.appcompat)
     implementation(libs.material)
+    implementation(libs.androidx.activity.compose)
+    implementation(libs.androidx.material3)
 
-    // 1. Google Play Services (Nearby)
+    // 2. Compose BOM 및 관련 라이브러리 (버전 충돌 방지)
+    val composeBom = platform(libs.androidx.compose.bom)
+    implementation(composeBom)
+    androidTestImplementation(composeBom)
+    implementation(libs.androidx.compose.ui)
+    implementation(libs.androidx.compose.ui.graphics)
+    implementation(libs.androidx.compose.foundation)
+    implementation(libs.androidx.compose.ui.tooling.preview)
+    debugImplementation(libs.androidx.compose.ui.tooling)
+
+    // 3. Google Play Services & Serialization
     implementation(libs.play.services.nearby)
+    implementation(libs.play.services.location)
+    implementation(libs.kotlinx.serialization.json)
 
-    // 2. Lifecycle
+    // 4. Lifecycle & ViewModel
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
 
-    // 3. Room
+    // 5. Room Database
     implementation(libs.androidx.room.runtime)
     implementation(libs.androidx.room.ktx)
     implementation(libs.androidx.room.common.jvm)
     ksp(libs.androidx.room.compiler)
 
-    // 4. Testing (TOML에 이미 있던 것들 연결)
+    // 6. Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
-
-    implementation("com.google.android.gms:play-services-nearby:19.3.0")
-    implementation("org.jetbrains.kotlinx:kotlinx-serialization-json:1.6.3")
-    implementation("com.google.android.gms:play-services-location:21.0.1")
-
 }
