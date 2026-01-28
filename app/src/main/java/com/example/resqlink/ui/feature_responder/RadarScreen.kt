@@ -26,6 +26,10 @@ import kotlin.math.roundToInt
 import kotlin.math.sin
 import androidx.compose.ui.graphics.Color
 import androidx.compose.foundation.border
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.Add
+import androidx.compose.ui.text.font.FontWeight
+
 /**
  * 네 프로젝트에 이미 있는 모델을 쓰는 걸 전제로 했고,
  * (필드가 다르면) 아래 RadarSignalUi에 lastSeenMs 같은 것만 추가해주면 됨.
@@ -57,7 +61,6 @@ fun RadarScreen(
             .padding(horizontal = 16.dp)
             .padding(top = 10.dp)
     ) {
-        // ===== 상단 타이틀 영역(원하면 너 앱 상단바에 맞게 빼도 됨) =====
         Row(
             Modifier.fillMaxWidth(),
             verticalAlignment = Alignment.CenterVertically
@@ -186,23 +189,27 @@ private fun RadarChartCardBody(
         Modifier.fillMaxWidth(),
         contentAlignment = Alignment.Center
     ) {
-        val size = minOf(maxWidth, 360.dp)
+        val width = maxWidth
+        //  GPS OFF일 때 세로로 더 길게 보이도록 높이를 480dp 정도로 설정 (기존은 1:1 비율)
+        val height = 500.dp
         Box(
             Modifier
-                .size(size)
+                .width(width)
+                .height(height)
                 .padding(vertical = 2.dp),
             contentAlignment = Alignment.Center
         ) {
             if (mode == com.example.resqlink.domain.model.radar.RadarMode.GPS_ON) {
                 RadarCircleChart(
-                    size = size,
+                    width=width,
+                    height=height,
                     signals = signals,
                     selectedKey = selectedKey,
                     onSelectKey = onSelectKey
                 )
             } else {
                 RadarAxisChart(
-                    size = size,
+                    size = width,
                     signals = signals,
                     selectedKey = selectedKey,
                     onSelectKey = onSelectKey
@@ -218,20 +225,23 @@ private fun RadarChartCardBody(
  */
 @Composable
 private fun RadarCircleChart(
-    size: Dp,
+    width: Dp,
+    height: Dp,
     signals: List<RadarSignalUi>,
     selectedKey: String?,
     onSelectKey: (String) -> Unit
 ) {
     val density = LocalDensity.current
-    val sizePx = with(density) { size.toPx() }
+    val widthPx = with(density) { width.toPx() }
+    val heightPx = with(density) { height.toPx() }
 
-    val cx = sizePx / 2f
-    val cy = sizePx / 2f
+    val cx = widthPx / 2f
+    val cy = heightPx / 2f
 
-    val nearR = sizePx * 0.22f
-    val midR  = sizePx * 0.45f
-    val farR  = sizePx * 0.70f
+    val maxR  = minOf(widthPx, heightPx) * 0.42f
+    val farR  = maxR
+    val midR  = maxR * 0.65f
+    val nearR = maxR * 0.35f
 
     val dashed = remember { PathEffect.dashPathEffect(floatArrayOf(12f, 10f), 0f) }
     val ringStroke = remember { Stroke(width = 3f, pathEffect = dashed) }
@@ -484,27 +494,50 @@ private fun SummaryCard(
 ) {
     val shape = RoundedCornerShape(18.dp)
 
-    ElevatedCard(
+    Card(
         modifier = modifier
             .height(92.dp)
-            .border(width = 2.dp,
+            .border(
+                width = 1.5.dp, // 테두리 두께를 약간 줄여서 더 깔끔하게
                 color = border,
-                shape = shape),
+                shape = shape
+            ),
         shape = shape,
-        colors = CardDefaults.elevatedCardColors(containerColor = tint)
+        // 배경색을 무조건 흰색(또는 Surface)으로 지정하여 뒤가 비치지 않게 합니다.
+        colors = CardDefaults.cardColors(containerColor = Color.White),
+        elevation = CardDefaults.cardElevation(defaultElevation = 0.dp) // 그림자 제거로 더 깔끔하게
     ) {
         Row(
             Modifier.fillMaxSize().padding(horizontal = 14.dp, vertical = 12.dp),
             verticalAlignment = Alignment.CenterVertically
         ) {
+            // ✅ 스크린샷처럼 왼쪽에 아이콘 배경(tint) 효과를 주고 싶을 때 사용
+            Box(
+                modifier = Modifier
+                    .size(40.dp)
+                    .background(tint, CircleShape), // 여기서 전달받은 연한 색상을 사용
+                contentAlignment = Alignment.Center
+            ) {
+                // 여기에 아이콘(Icon)을 넣으면 스크린샷과 더 비슷해집니다.
+                Icon(
+                    imageVector = Icons.Default.Add, // 예시 아이콘
+                    contentDescription = null,
+                    modifier = Modifier.size(20.dp),
+                    tint = border // 진한 색상으로 아이콘 색 지정
+                )
+            }
+
+            Spacer(Modifier.width(12.dp))
+
             Column(Modifier.weight(1f)) {
-                Text(title, style = MaterialTheme.typography.titleSmall)
-                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = MaterialTheme.colorScheme.onSurfaceVariant)
+                Text(title, style = MaterialTheme.typography.titleSmall, color = Color.DarkGray)
+                Text(subtitle, style = MaterialTheme.typography.bodySmall, color = Color.Gray)
             }
             Text(
                 "$count",
                 style = MaterialTheme.typography.headlineMedium,
-                color = border
+                fontWeight = FontWeight.Bold,
+                color = border // 숫자 색상을 테두리 색상과 맞춤
             )
         }
     }
