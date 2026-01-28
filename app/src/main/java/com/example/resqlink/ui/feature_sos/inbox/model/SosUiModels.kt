@@ -1,4 +1,4 @@
-package com.example.resqlink.ui.feature_sos.model
+package com.example.resqlink.ui.feature_sos.inbox.model
 
 enum class RiskLevel {
     HIGH, MID, LOW

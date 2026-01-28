@@ -1,11 +1,14 @@
-package com.example.resqlink.ui.feature_sos
+package com.example.resqlink.ui.feature_sos.inbox
 
 import androidx.lifecycle.ViewModel
+import com.example.resqlink.ui.feature_sos.inbox.model.RiskLevel
+import com.example.resqlink.ui.feature_sos.inbox.model.SosFilter
+import com.example.resqlink.ui.feature_sos.inbox.model.SosReportUiModel
+import com.example.resqlink.ui.feature_sos.inbox.model.SosUiState
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
 import kotlinx.coroutines.flow.update
-import com.example.resqlink.ui.feature_sos.model.*
 
 class SosInboxViewModel : ViewModel() {
 
@@ -20,9 +23,6 @@ class SosInboxViewModel : ViewModel() {
         _state.update { it.copy(selectedFilter = filter) }
     }
 
-    fun onClickSos() {
-        // TODO: SOS 전송
-    }
 }
 
 private fun sampleReports() = listOf(

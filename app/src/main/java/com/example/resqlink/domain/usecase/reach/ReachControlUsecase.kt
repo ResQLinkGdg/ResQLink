@@ -4,6 +4,8 @@ import com.example.resqlink.domain.gateway.LocationProvider
 import com.example.resqlink.domain.gateway.Transport
 import com.example.resqlink.platform.reach.protocol.MessageFactory
 import com.example.resqlink.platform.reach.protocol.MessageCodec
+import com.example.resqlink.platform.reach.protocol.sos.SosSituation
+import com.example.resqlink.platform.reach.protocol.sos.SosUrgency
 
 class ReachControlUseCase(
     private val transport: Transport,
@@ -31,18 +33,31 @@ class ReachControlUseCase(
     /**
      * SOS 최초 생성 & 전파
      */
-    suspend fun sendSos(ttl: Int, text: String?) {
-        val loc = locationProvider.getCurrentLocation()
+    suspend fun sendSos(
+        ttl: Int,
+        urgency: SosUrgency,
+        situation: SosSituation,
+        peopleCount: Int?,
+        hint: String?,
+        includeLocation: Boolean
+    ) {
+        val loc = if (includeLocation) {
+            locationProvider.getCurrentLocation()
+        } else null
 
         val sos = MessageFactory.newSos(
             senderId = mySenderId,
             ttl = ttl,
+            urgency = urgency,
+            situation = situation,
+            peopleCount = peopleCount,
+            hint = hint,
             lat = loc?.lat,
-            lng = loc?.lng,
-            text = text
+            lng = loc?.lng
         )
 
         transport.broadcast(codec.encode(sos))
     }
+
 
 }

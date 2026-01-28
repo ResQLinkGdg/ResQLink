@@ -1,15 +1,21 @@
 package com.example.resqlink.platform.reach.protocol
 
+import com.example.resqlink.platform.reach.protocol.sos.SosSituation
+import com.example.resqlink.platform.reach.protocol.sos.SosUrgency
 import java.util.UUID
 
 object MessageFactory {
+
     fun newSos(
         senderId: String,
         ttl: Int,
-        timestampMs: Long = System.currentTimeMillis(),
-        lat: Double? = null,
-        lng: Double? = null,
-        text: String? = null
+        urgency: SosUrgency,
+        situation: SosSituation,
+        peopleCount: Int?,
+        hint: String?,
+        lat: Double?,
+        lng: Double?,
+        timestampMs: Long = System.currentTimeMillis()
     ): MessageEnvelope =
         MessageEnvelope(
             type = MessageType.SOS,
@@ -17,8 +23,14 @@ object MessageFactory {
             senderId = senderId,
             timestampMs = timestampMs,
             ttl = ttl,
-            hops = emptyList(), // ⭐ 명시
-            payload = SosPayload(lat = lat, lng = lng, text = text)
+            hops = emptyList(),
+            payload = SosPayload(
+                urgency = urgency,
+                situation = situation,
+                peopleCount = peopleCount,
+                hint = hint,
+                lat = lat,
+                lng = lng
+            )
         )
-
 }

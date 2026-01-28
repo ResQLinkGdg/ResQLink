@@ -1,4 +1,4 @@
-package com.example.resqlink.ui.feature_sos
+package com.example.resqlink.ui.feature_sos.inbox
 
 import androidx.compose.foundation.layout.*
 import androidx.compose.foundation.lazy.LazyColumn
@@ -7,15 +7,13 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.resqlink.ui.common.component.BottomNavBar
-import com.example.resqlink.ui.common.model.BottomTab
 import com.example.resqlink.ui.feature_sos.component.FilterRow
 import com.example.resqlink.ui.feature_sos.component.ReportCard
 import com.example.resqlink.ui.feature_sos.component.SosBanner
 import com.example.resqlink.ui.feature_sos.component.TopStatusBar
-import com.example.resqlink.ui.feature_sos.model.SosFilter
-import com.example.resqlink.ui.feature_sos.model.SosReportUiModel
-import com.example.resqlink.ui.feature_sos.model.SosUiState
+import com.example.resqlink.ui.feature_sos.inbox.model.SosFilter
+import com.example.resqlink.ui.feature_sos.inbox.model.SosReportUiModel
+import com.example.resqlink.ui.feature_sos.inbox.model.SosUiState
 
 @Composable
 fun SosInboxScreen(

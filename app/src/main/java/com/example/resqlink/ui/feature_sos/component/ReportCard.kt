@@ -8,7 +8,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.text.font.FontWeight
-import com.example.resqlink.ui.feature_sos.model.SosReportUiModel
+import com.example.resqlink.ui.feature_sos.inbox.model.SosReportUiModel
 
 @Composable
 fun ReportCard(item: SosReportUiModel) {

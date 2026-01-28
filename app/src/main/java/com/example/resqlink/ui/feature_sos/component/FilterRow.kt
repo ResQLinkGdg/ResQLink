@@ -5,7 +5,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import com.example.resqlink.ui.feature_sos.model.SosFilter
+import com.example.resqlink.ui.feature_sos.inbox.model.SosFilter
 
 @Composable
 fun FilterRow(
