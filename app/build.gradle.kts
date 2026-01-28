@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -41,6 +43,7 @@ android {
     }
 }
 
+// 의존성 블록
 dependencies {
     // 1. Android 기본 & UI
     implementation(libs.androidx.appcompat)
@@ -48,6 +51,10 @@ dependencies {
     implementation(libs.androidx.activity.compose)
     implementation(libs.androidx.material3)
     implementation(libs.androidx.foundation)
+    // RAG-base에서 추가된 UI 요소
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.constraintlayout)
 
     // 2. Compose BOM 및 관련 라이브러리 (버전 충돌 방지)
     val composeBom = platform(libs.androidx.compose.bom)
@@ -63,10 +70,16 @@ dependencies {
     implementation(libs.play.services.nearby)
     implementation(libs.play.services.location)
     implementation(libs.kotlinx.serialization.json)
+    // RAG-base에서 추가된 데이터 핸들링
+    implementation(libs.gson)
 
-    // 4. Lifecycle & ViewModel
+    // 4. Lifecycle & ViewModel (HEAD 기준 + Coroutines 추가)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // RAG-base에서 추가된 KTX 및 코루틴
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.kotlinx.coroutines.android)
 
     // 5. Room Database
     implementation(libs.androidx.room.runtime)
@@ -74,7 +87,12 @@ dependencies {
     implementation(libs.androidx.room.common.jvm)
     ksp(libs.androidx.room.compiler)
 
-    // 6. Testing
+    // 6. AI & MediaPipe (RAG-base에서 새롭게 도입된 영역)
+    implementation(libs.mediapipe.tasks.text)
+    implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.google.generativeai)
+
+    // 7. Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
