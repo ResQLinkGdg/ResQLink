@@ -16,12 +16,10 @@ import androidx.compose.ui.unit.sp
 @Composable
 fun TopStatusBar(
     isDisasterMode: Boolean,
-    nearbyCount: Int,
-    batteryPercent: Int,
-    onClickRadar: () -> Unit   // 👈 추가
+    onToggleDisasterMode: (Boolean) -> Unit,
+    onClickRadar: () -> Unit
 ) {
     Column {
-        // 상단 타이틀 바
         Row(
             modifier = Modifier
                 .fillMaxWidth()
@@ -44,27 +42,20 @@ fun TopStatusBar(
 
             Text(
                 text = "재난 모드",
-                fontSize = 20.sp,
                 style = MaterialTheme.typography.titleLarge
             )
 
             Spacer(Modifier.weight(1f))
 
+            Switch(
+                checked = isDisasterMode,
+                onCheckedChange = onToggleDisasterMode
+            )
+
             IconButton(onClick = onClickRadar) {
                 Icon(Icons.Outlined.MyLocation, contentDescription = "Radar")
             }
-
-            AssistChip(
-                onClick = {},
-                label = { Text("$batteryPercent%") }
-            )
         }
 
-        // 주변 연결 수
-        Text(
-            text = "주변 연결: ${nearbyCount}명",
-            modifier = Modifier.padding(start = 16.dp, bottom = 8.dp),
-            style = MaterialTheme.typography.bodyMedium
-        )
     }
 }

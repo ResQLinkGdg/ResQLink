@@ -75,7 +75,8 @@ class MainActivity : ComponentActivity() {
             transport = transport,
             locationProvider = locationProvider,
             codec = codec,
-            mySenderId = mySenderId
+            mySenderId = mySenderId,
+            applyIncomingSos = applyIncomingSos
         )
 
         val factory = RadarViewModelFactory(
@@ -139,6 +140,7 @@ class MainActivity : ComponentActivity() {
 
                     composable(AppRoute.SosInbox.route) {
                         SosInboxRoute(
+                            reachControlUseCase = reachControl,
                             onOpenRadar = {
                                 navController.navigate(AppRoute.Radar.route)
                             },

@@ -2,17 +2,24 @@ package com.example.resqlink.domain.usecase.reach
 
 import com.example.resqlink.domain.gateway.LocationProvider
 import com.example.resqlink.domain.gateway.Transport
+import com.example.resqlink.domain.model.sos.IncomingSosEvent
+import com.example.resqlink.domain.usecase.radar.ApplyIncomingSosUsecase
 import com.example.resqlink.platform.reach.protocol.MessageFactory
 import com.example.resqlink.platform.reach.protocol.MessageCodec
 import com.example.resqlink.platform.reach.protocol.sos.SosSituation
 import com.example.resqlink.platform.reach.protocol.sos.SosUrgency
+import kotlinx.coroutines.flow.Flow
 
 class ReachControlUseCase(
     private val transport: Transport,
     private val locationProvider: LocationProvider,
     private val codec: MessageCodec,
-    private val mySenderId: String
+    private val mySenderId: String,
+    private val applyIncomingSos: ApplyIncomingSosUsecase
 ) {
+
+    val incomingSosFlow: Flow<IncomingSosEvent>
+        get() = applyIncomingSos.incomingSosFlow
 
     /**
      * 재난 대응 모드 시작

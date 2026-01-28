@@ -7,6 +7,7 @@ import androidx.compose.material3.*
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
+import androidx.lifecycle.viewmodel.compose.viewModel
 import com.example.resqlink.ui.feature_sos.component.FilterRow
 import com.example.resqlink.ui.feature_sos.component.ReportCard
 import com.example.resqlink.ui.feature_sos.component.SosBanner
@@ -21,15 +22,15 @@ fun SosInboxScreen(
     reports: List<SosReportUiModel>,
     onSelectFilter: (SosFilter) -> Unit,
     onClickSos: () -> Unit,
-    onOpenRadar: () -> Unit    // 👈 추가
+    onOpenRadar: () -> Unit,    // 👈 추가
+    onToggleDisasterMode: (Boolean) -> Unit   // 👈 콜백만 받음
 ) {
     Scaffold(
         topBar = {
             TopStatusBar(
                 isDisasterMode = state.isDisasterMode,
-                nearbyCount = state.nearbyCount,
-                batteryPercent = state.batteryPercent,
-                onClickRadar = onOpenRadar
+                onClickRadar = onOpenRadar,
+                onToggleDisasterMode = onToggleDisasterMode
             )
         }
     ) { padding ->

@@ -14,6 +14,6 @@ data class SosReportUiModel(
     val category: String,
     val title: String,
     val minutesAgo: Int,
-    val distanceM: Int,
+    val distanceM: Int?,
     val signalText: String
 )
