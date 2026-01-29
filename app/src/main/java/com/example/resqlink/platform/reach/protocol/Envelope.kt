@@ -1,5 +1,7 @@
 package com.example.resqlink.platform.reach.protocol
 
+import com.example.resqlink.platform.reach.protocol.sos.SosSituation
+import com.example.resqlink.platform.reach.protocol.sos.SosUrgency
 import kotlinx.serialization.SerialName
 import kotlinx.serialization.Serializable
 
@@ -21,7 +23,11 @@ sealed interface Payload
 @Serializable
 @SerialName("SOS")
 data class SosPayload(
-    val lat: Double? = null,    // 위도
-    val lng: Double? = null,    // 경도
-    val text: String? = null    // 요청 자유 서술
+    val urgency: SosUrgency,          // ⭐ 긴급도
+    val situation: SosSituation,      // ⭐ 상황
+    val peopleCount: Int? = null,     // ⭐ 대략 인원
+    val hint: String? = null,         // ⭐ 추가 힌트 (40자 이내)
+    val lat: Double? = null,           // 위치 (옵션)
+    val lng: Double? = null
 ) : Payload
+

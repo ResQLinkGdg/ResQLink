@@ -13,7 +13,7 @@ class NearbyTransport(
     private val callbacks: TransportCallbacks,
     private val serviceId: String = NearbyConfig.SERVICE_ID,
     private val localEndpointName: String = NearbyConfig.deviceName(),
-    private val strategy: Strategy = Strategy.P2P_STAR
+    private val strategy: Strategy = Strategy.P2P_CLUSTER
 ) : Transport {
 
     private val client: ConnectionsClient =
@@ -91,8 +91,13 @@ class NearbyTransport(
             callbacks.onEndpointFound(endpointId, info.endpointName)
             Log.d(TAG, "Endpoint found: $endpointId")
 
-            // MVP 전략: 발견 즉시 연결
-            connect(endpointId)
+            // ⭐ 충돌 방지: 내 이름보다 상대방 이름이 사전순으로 뒤에 있을 때만 내가 먼저 연결 시도
+            if (localEndpointName < (info.endpointName ?: "")) {
+                Log.d(TAG, "I am the initiator for $endpointId")
+                connect(endpointId)
+            } else {
+                Log.d(TAG, "Waiting for $endpointId to connect to me")
+            }
         }
 
         override fun onEndpointLost(endpointId: String) {

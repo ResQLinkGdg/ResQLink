@@ -1,9 +1,7 @@
-package com.example.resqlink.domain.policy.ranging
+package com.example.resqlink.ui.feature_responder
 
 import com.example.resqlink.domain.model.Range.RangeBucket
-import com.example.resqlink.ui.feature_responder.PlacedDot
 import com.example.resqlink.domain.model.radar.RadarMode
-import com.example.resqlink.ui.feature_responder.RadarSignalUi
 import kotlin.math.cos
 import kotlin.math.max
 import kotlin.math.min
@@ -40,6 +38,23 @@ class RadarLayoutEngine(
         val maxXSpreadPx: Float = 90f,         // 좌우로 최대 퍼지는 범위
         val offJitterPx: Float = 3f            // 미세 지터(고정 랜덤)
     )
+
+    companion object {
+        // 클래스 내부에서 상수를 쓰고 싶다면 반드시 companion object 안에!
+        const val MAX_DISTANCE = 200.0
+    }
+    private fun calculateRadius(radii: Radii, signal: RadarSignalUi): Float {
+        return if (signal.distanceM != null) {
+            // ⭐ 버킷 고정값이 아니라, 실제 거리에 비례해서 반지름 결정
+            val fraction = (signal.distanceM / MAX_DISTANCE).coerceIn(0.0, 1.0).toFloat()
+            radii.far * fraction
+        } else {
+            // GPS가 없으면 기존처럼 버킷 반지름(0.22, 0.42 등) 사용
+            radiusForBucket(radii, signal.bucket)
+        }
+    }
+
+
     fun layout(
         signals: List<RadarSignalUi>,
         widthPx: Float,
@@ -60,68 +75,26 @@ class RadarLayoutEngine(
 
         val placed = mutableListOf<PlacedDot>()
 
-        when (mode) {
-            RadarMode.GPS_ON -> {
-                // GPS ON: bearing 있는 것만
-                val list = signals.filter { it.bearingDeg != null && it.bucket != RangeBucket.UNKNOWN }
-                for (s in list) {
-                    val r0 = radiusForBucket(radii, s.bucket)
-                    val baseAngle = s.bearingDeg!!
-
-                    val (x, y) = placeOnRingAvoidingOverlap(
-                        key = s.key,
-                        cx = cx, cy = cy,
-                        r0 = r0,
-                        baseAngleDeg = baseAngle,
-                        alreadyPlaced = placed
-                    )
-
+        if (mode == RadarMode.GPS_ON) {
+            signals.filter { it.bearingDeg != null && it.bucket != RangeBucket.UNKNOWN }.forEach { s ->
+                val r0 = calculateRadius(radii, s)
+                val (x, y) = placeOnRingAvoidingOverlap(s.key, cx, cy, r0, s.bearingDeg!!, placed)
+                placed += PlacedDot(s.key, s.bucket, x, y)
+            }
+        } else {
+            signals.filter { it.bucket != RangeBucket.UNKNOWN }.groupBy { it.bucket }.forEach { (b, group) ->
+                val sortedGroup = group.sortedBy { it.key.hashCode() }
+                val n = sortedGroup.size
+                sortedGroup.withIndex().forEach { (i, s) ->
+                    val r0 = calculateRadius(radii, s)
+                    val yBase = cy - r0
+                    val currentSpacing = if (n <= 1) 0f else min(cfg.slotSpacingPx, (cfg.maxXSpreadPx * 2) / (n + 1))
+                    var x = cx + (i - (n - 1) / 2f) * currentSpacing + jitterSignedPx(s.key, "x", cfg.offJitterPx)
+                    var y = yBase + jitterSignedPx(s.key, "y", cfg.offJitterPx)
                     placed += PlacedDot(s.key, s.bucket, x, y)
                 }
             }
-
-            RadarMode.GPS_OFF -> {
-                // GPS OFF: 방향 없음 → 버킷별로 y(거리대역)만 고정하고 x는 좌우 슬롯으로 분산
-                val groups = signals
-                    .filter { it.bucket != RangeBucket.UNKNOWN }
-                    .groupBy { it.bucket }
-
-                val order = listOf(RangeBucket.NEAR, RangeBucket.MID, RangeBucket.FAR)
-                for (b in order) {
-                    val group = (groups[b] ?: emptyList())
-                        .sortedBy { stableHash(it.key) } // 위치 안정화를 위해 고정 정렬
-
-                    val yBase = cy - radiusForBucket(radii, b)
-                    val n = group.size
-                    if (n == 0) continue
-
-                    for ((i, s) in group.withIndex()) {
-                        // 가운데 기준 좌우 슬롯 배치
-                        val centerIndex = (n - 1) / 2f
-                        var x = cx + (i - centerIndex) * cfg.slotSpacingPx
-
-                        // 좌우 퍼짐 제한
-                        x = x.coerceIn(cx - cfg.maxXSpreadPx, cx + cfg.maxXSpreadPx)
-
-                        // 미세 지터(고정 랜덤)로 겹침/일렬 느낌 완화
-                        x += jitterSignedPx(s.key, "x", cfg.offJitterPx)
-                        var y = yBase + jitterSignedPx(s.key, "y", cfg.offJitterPx)
-
-                        // 혹시 겹치면 x를 조금씩 밀어내기
-                        var tries = 0
-                        while (tries < cfg.maxTries && collides(x, y, placed)) {
-                            val dir = if (stableHash(s.key + tries) % 2 == 0) 1 else -1
-                            x += dir * cfg.minSeparationPx
-                            x = x.coerceIn(cx - cfg.maxXSpreadPx, cx + cfg.maxXSpreadPx)
-                            tries++
-                        }
-
-                        placed += PlacedDot(s.key, s.bucket, x, y)
-                    }
-                }
-            }
         }
-
         return placed
     }
 

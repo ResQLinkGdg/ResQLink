@@ -6,6 +6,7 @@ import com.example.resqlink.domain.model.Range.RssiRangeConfig
 import com.example.resqlink.domain.model.radar.RadarMode
 import com.example.resqlink.domain.model.radar.RadarTarget
 import com.example.resqlink.domain.policy.ranging.RssiRangeEstimator
+import com.google.android.gms.nearby.messages.Distance
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import kotlinx.coroutines.flow.asStateFlow
@@ -15,7 +16,12 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
-
+private data class CalcResult(
+    val bucket: RangeBucket,
+    val approxText: String?,
+    val bearing: Double?,
+    val distanceM: Double?
+)
 class InMemoryRadarStateStore(
     private val rssiCfg: RssiRangeConfig = RssiRangeConfig(),
     private val keepMs: Long = 24 * 60 * 60 * 1000L // 최근 24h 메모리 유지(앱 재실행하면 초기화)
@@ -36,7 +42,8 @@ class InMemoryRadarStateStore(
         var payloadLoc: GeoLocation?,
         var bearingDeg: Double?,
         var approxRangeText: String?,
-        var bucket: RangeBucket
+        var bucket: RangeBucket,
+        var distanceM: Double?
     )
 
     private val lock = Any()
@@ -78,18 +85,25 @@ class InMemoryRadarStateStore(
             cleanupLocked(now)
 
             val estimate = estimator.update(originId, rssiDbm, now)
-            val bucketFromRssi = estimate.bucket
-            val approxFromRssi = estimate.displayRange?.removePrefix("약 ") // "약 20~40m" -> "20~40m"
 
-            val (finalBucket, finalApprox, finalBearing) =
-                if (_mode.value == RadarMode.GPS_ON && effectiveMyLoc != null && payloadLocation != null) {
-                    val d = haversineMeters(effectiveMyLoc, payloadLocation)
-                    val b = bucketByMeters(d)
-                    val t = "${d.roundToInt()}m"
-                    Triple(b, t, bearingDeg(effectiveMyLoc, payloadLocation))
-                } else {
-                    Triple(bucketFromRssi, approxFromRssi, null)
-                }
+            val res = if (_mode.value == RadarMode.GPS_ON && effectiveMyLoc != null && payloadLocation != null) {
+                val d = calculateGpsDistance(effectiveMyLoc, payloadLocation)
+                //  Triple 대신 CalcResult 사용
+                CalcResult(
+                    bucket = bucketByMeters(d),
+                    approxText = "${d.roundToInt()}m",
+                    bearing = bearingDeg(effectiveMyLoc, payloadLocation),
+                    distanceM = d
+                )
+            } else {
+                val estimate = estimator.update(originId, rssiDbm, now)
+                CalcResult(
+                    bucket = estimate.bucket,
+                    approxText = estimate.displayRange?.removePrefix("약 "),
+                    bearing = null,
+                    distanceM = estimate.distanceM // RSSI로 계산된 거리도 넣어주면 좋음
+                )
+            }
 
             val entry = byOrigin[originId]
             if (entry == null) {
@@ -99,18 +113,20 @@ class InMemoryRadarStateStore(
                     lastSeenMs = now,
                     rssiDbm = rssiDbm,
                     payloadLoc = payloadLocation,
-                    bearingDeg = finalBearing,
-                    approxRangeText = finalApprox,
-                    bucket = finalBucket
+                    bearingDeg = res.bearing,
+                    distanceM=res.distanceM,
+                    approxRangeText = res.approxText,
+                    bucket = res.bucket
                 )
             } else {
                 entry.lastMsgId = msgId
                 entry.lastSeenMs = now
                 entry.rssiDbm = rssiDbm
                 if (payloadLocation != null) entry.payloadLoc = payloadLocation
-                entry.bearingDeg = finalBearing
-                entry.approxRangeText = finalApprox
-                entry.bucket = finalBucket
+                entry.bucket = res.bucket
+                entry.approxRangeText = res.approxText
+                entry.bearingDeg = res.bearing
+                entry.distanceM = res.distanceM
             }
 
             publishLocked()
@@ -151,7 +167,8 @@ class InMemoryRadarStateStore(
                     bucket = e.bucket,
                     approxRangeText = e.approxRangeText,
                     bearingDeg = e.bearingDeg,
-                    hasGps = (e.payloadLoc != null)
+                    hasGps = (e.payloadLoc != null),
+                    distanceM = e.distanceM
 
                 )
             }
@@ -186,5 +203,15 @@ class InMemoryRadarStateStore(
         val x = cos(lat1) * sin(lat2) - sin(lat1) * cos(lat2) * cos(dLon)
         val brng = Math.toDegrees(atan2(y, x))
         return (brng + 360.0) % 360.0
+    }
+
+    private fun calculateGpsDistance(my: GeoLocation, target: GeoLocation): Double {
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(
+            my.lat, my.lng,
+            target.lat, target.lng,
+            results
+        )
+        return results[0].toDouble() // 미터(m) 단위 결과 반환
     }
 }
