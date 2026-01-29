@@ -1,4 +1,5 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -6,6 +7,22 @@ plugins {
     alias(libs.plugins.ksp)
     alias(libs.plugins.kotlin.serialization)
     alias(libs.plugins.compose.compiler)
+}
+
+// 여기서 파일을 텍스트로 직접 읽어 키를 찾음
+val apiKey: String = try {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        // 파일의 줄들을 읽어서 "GEMINI_API_KEY"로 시작하는 줄을 찾고, "=" 뒷부분만 가져옵니다.
+        file.readLines()
+            .find { it.trim().startsWith("GEMINI_API_KEY") }
+            ?.substringAfter("=")
+            ?.trim() ?: ""
+    } else {
+        ""
+    }
+} catch (e: Exception) {
+    "" // 에러 나면 빈 문자열
 }
 
 android {
@@ -25,7 +42,10 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
     }
+
 
     buildTypes {
         release {
@@ -46,6 +66,7 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true //임시
     }
 }
 
@@ -116,4 +137,6 @@ dependencies {
 
     // 7. Material Icons (Outlined / Filled 등)
     implementation(libs.androidx.compose.material.icons.extended)
+
+    implementation(libs.google.generativeai)
 }

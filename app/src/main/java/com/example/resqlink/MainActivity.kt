@@ -33,25 +33,31 @@ import com.example.resqlink.ui.AppRoute
 import com.example.resqlink.ui.common.PermissionScreen
 import com.example.resqlink.ui.common.component.BottomNavBar
 import com.example.resqlink.ui.common.model.BottomTab
+import com.example.resqlink.ui.feature_guide.GuideScreen
 import com.example.resqlink.ui.feature_responder.RadarRoute
 import com.example.resqlink.ui.feature_responder.RadarViewModelFactory
 import com.example.resqlink.ui.feature_sos.compose.SosComposeRoute
 import com.example.resqlink.ui.feature_sos.inbox.SosInboxRoute
+// RAG 관련 import 추가
+import com.example.resqlink.rag.*
+import com.example.resqlink.rag.database.DataPackLoader
+import com.example.resqlink.rag.generation.InferenceModel
 import com.google.android.gms.nearby.connection.Strategy
-import java.security.Permission
-import java.util.jar.Manifest
-
+import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
 
     private var isPermissionGranted by mutableStateOf(false)
 
-    //  핵심 엔진 부품들을 클래스 멤버로 승격
+    // 기존 엔진들
     private lateinit var transport: Transport
     private lateinit var identityStore: IdentityStore
     private lateinit var reachControl: ReachControlUseCase
     private lateinit var factory: RadarViewModelFactory
-    // 1. 권한 요청 결과 처리기
+
+    // 🟢 [추가] RAG 엔진 및 ViewModel
+    private lateinit var ragViewModel: RagViewModel
+
     private val requestPermissionLauncher = registerForActivityResult(
         ActivityResultContracts.RequestMultiplePermissions()
     ) { permissions ->
@@ -60,8 +66,8 @@ class MainActivity : ComponentActivity() {
             .all { it.value }
 
         if (allRequiredGranted) {
-            isPermissionGranted = true // ⭐ 상태 업데이트 -> UI가 자동으로 메인으로 바뀜
-            startNearbyServices()       // ⭐ 이제서야 엔진 가동!
+            isPermissionGranted = true
+            startNearbyServices()
         }
     }
 
@@ -79,7 +85,6 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // 2. 버튼 클릭 시 호출할 함수
     private fun requestAllPermissions() {
         val permissions = getRequiredPermissions().toMutableList()
         if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
@@ -95,38 +100,33 @@ class MainActivity : ComponentActivity() {
         }
     }
 
-    // ★ circular dependency 깨려고 lateinit + provider 사용
-
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. 앱 시작 시 권한 상태 초기화
         isPermissionGranted = getRequiredPermissions().all {
             checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
         }
 
-        // 2. 엔진들은 일단 초기화 (나중에 권한 얻으면 startNearbyServices 호출)
         setupEngines()
+
+        // 🟢 [추가] RAG 엔진 초기화 실행
+        setupRagEngine()
 
         if (isPermissionGranted) {
             startNearbyServices()
         }
 
-
         setContent {
-            // 1. 이미 권한이 있는지 체크
             isPermissionGranted = getRequiredPermissions().all {
                 checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
             }
 
             if (!isPermissionGranted) {
-                // ⭐ 권한이 없을 때만 이 화면을 보여줌
                 PermissionScreen(
                     onGrantClick = { requestAllPermissions() },
                     onLaterClick = { finish() }
                 )
             } else {
-                // ⭐ 권한이 있을 때만 메인 UI(Scaffold)를 보여줌
                 val navController = rememberNavController()
                 val currentBackStack by navController.currentBackStackEntryAsState()
                 val currentRoute = currentBackStack?.destination?.route
@@ -135,31 +135,26 @@ class MainActivity : ComponentActivity() {
                     AppRoute.SosInbox.route -> BottomTab.SOS
                     AppRoute.Guide.route -> BottomTab.GUIDE
                     AppRoute.Settings.route -> BottomTab.SETTINGS
-                    else -> BottomTab.SOS   // Radar 같은 상세 화면
+                    else -> BottomTab.SOS
                 }
 
-                // 현재 route → BottomTab 매핑 로직 등...
                 Scaffold(
                     bottomBar = { BottomNavBar(
                         selected = currentTab,
                         onSelect = { tab ->
-
                             val targetRoute = when (tab) {
                                 BottomTab.SOS -> AppRoute.SosInbox.route
                                 BottomTab.GUIDE -> AppRoute.Guide.route
                                 BottomTab.SETTINGS -> AppRoute.Settings.route
                             }
 
-                            // 🔥 Radar 위에 있을 때 SOS 누르면 pop
                             if (currentRoute == AppRoute.Radar.route &&
                                 targetRoute == AppRoute.SosInbox.route
                             ) {
                                 navController.popBackStack()
                             } else {
                                 navController.navigate(targetRoute) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
+                                    popUpTo(navController.graph.startDestinationId) { saveState = true }
                                     launchSingleTop = true
                                     restoreState = true
                                 }
@@ -175,12 +170,8 @@ class MainActivity : ComponentActivity() {
                         composable(AppRoute.SosInbox.route) {
                             SosInboxRoute(
                                 reachControlUseCase = reachControl,
-                                onOpenRadar = {
-                                    navController.navigate(AppRoute.Radar.route)
-                                },
-                                onNavigateToCompose = {
-                                    navController.navigate(AppRoute.SosCompose.route)
-                                }
+                                onOpenRadar = { navController.navigate(AppRoute.Radar.route) },
+                                onNavigateToCompose = { navController.navigate(AppRoute.SosCompose.route) }
                             )
                         }
 
@@ -197,7 +188,8 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(AppRoute.Guide.route) {
-                            /* GuideRoute */
+                            // 🟢 [수정] ViewModel 주입
+                            GuideScreen(viewModel = ragViewModel)
                         }
 
                         composable(AppRoute.Settings.route) {
@@ -206,19 +198,15 @@ class MainActivity : ComponentActivity() {
                     }
                 }
             }
-
         }
-
-
     }
 
     private fun setupEngines() {
-        identityStore= IdentityStore(this)
+        identityStore = IdentityStore(this)
         val mySenderId = identityStore.getMyId()
         val codec = MessageCodec()
         val dedup = InMemoryDedupStore()
         val locationProvider = AndroidLocationProvider(this)
-
         val store = InMemoryRadarStateStore()
 
         val applyIncomingSos = ApplyIncomingSosUsecase(
@@ -256,7 +244,26 @@ class MainActivity : ComponentActivity() {
             store = store,
             reachControl = reachControl,
             setRadarMode = SetRadarModeUsecase(store),
-            refreshMyLocation = RefreshMyLocationUsecase(  locationProvider, store)
+            refreshMyLocation = RefreshMyLocationUsecase(locationProvider, store)
         )
+    }
+
+    // 🟢 [추가] RAG 구성요소 초기화 및 조립
+    private fun setupRagEngine() {
+        val inferenceModel = InferenceModel(this)
+        val embeddingHelper = EmbeddingHelper(this)
+        val dataPackLoader = DataPackLoader(this)
+        val retrievalManager = RetrievalManager(dataPackLoader, embeddingHelper)
+        val ragPipeline = RagPipeline(inferenceModel, retrievalManager)
+
+        // ViewModel 생성
+        ragViewModel = RagViewModel(ragPipeline)
+
+        // 비동기 초기화 (모델 로딩 등 무거운 작업)
+        lifecycleScope.launch {
+            launch { inferenceModel.initialize() }
+            launch { embeddingHelper.initialize() }
+            launch { dataPackLoader.loadDataPack() }
+        }
     }
 }
