@@ -13,6 +13,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
 import com.example.resqlink.rag.database.DataPackLoader
+import com.example.resqlink.rag.generation.InferenceModel
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -59,7 +60,6 @@ class MainActivity : ComponentActivity() {
 // 3. UI 구성 요소
 @Composable
 fun RagScreen(viewModel: RagViewModel) {
-    // ViewModel의 상태를 관찰 (값이 바뀌면 화면이 자동 갱신됨)
     val answer by viewModel.answer.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
@@ -71,7 +71,7 @@ fun RagScreen(viewModel: RagViewModel) {
         modifier = Modifier
             .fillMaxSize()
             .padding(16.dp)
-            .verticalScroll(scrollState), // 스크롤 가능하게 설정
+            .verticalScroll(scrollState),
         horizontalAlignment = Alignment.CenterHorizontally
     ) {
         Text(

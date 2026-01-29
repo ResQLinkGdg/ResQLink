@@ -12,7 +12,7 @@ class EmbeddingHelper(private val context: Context) {
 
     private var textEmbedder: TextEmbedder? = null
     // 주의: assets 폴더에 이 이름의 모델 파일이 있어야 합니다.
-    private val modelFileName = "multilingual_e5_small.tflite"
+    private val modelFileName = "intfloat_multilingual-e5-small.tflite"
 
     suspend fun initialize() = withContext(Dispatchers.IO) {
         try {

@@ -1,4 +1,4 @@
-package com.example.resqlink.rag
+package com.example.resqlink.rag.generation
 
 import android.content.Context
 import android.util.Log
@@ -10,7 +10,6 @@ import java.io.File
 class InferenceModel(private val context: Context) {
 
     private var llmInference: LlmInference? = null
-    // assets 폴더에 이 파일명이 정확히 있어야 합니다.
     private val modelFileName = "gemma3-1B-it-int4.tflite"
 
     suspend fun initialize() = withContext(Dispatchers.IO) {
@@ -19,8 +18,6 @@ class InferenceModel(private val context: Context) {
         try {
             Log.d("InferenceModel", "모델 초기화 시작...")
 
-            // 1. 모델 파일 복사 (Assets -> 내부 저장소)
-            // MediaPipe는 assets에 있는 모델을 직접 읽지 못하므로 파일을 복사해야 합니다.
             val modelFile = File(context.filesDir, modelFileName)
             if (!modelFile.exists()) {
                 Log.d("InferenceModel", "모델 파일 복사 중...")
@@ -31,11 +28,10 @@ class InferenceModel(private val context: Context) {
                 }
             }
 
-            // 2. LlmInference 엔진 생성
             val options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(modelFile.absolutePath)
                 .setMaxTokens(1024) // 생성할 최대 토큰 수
-                .setTemperature(0.7f) // 창의성 조절 (0.0 ~ 1.0)
+                .setTemperature(0.7f)
                 .setTopK(40)
                 .build()
 
@@ -54,8 +50,7 @@ class InferenceModel(private val context: Context) {
                 return@withContext "모델이 아직 초기화되지 않았습니다. 잠시만 기다려주세요."
             }
 
-            // Gemma 3 프롬프트 포맷 적용
-            // (이 태그가 있어야 모델이 질문과 답변을 구분합니다)
+            // Gemma 3 프롬프트 포맷
             val formattedPrompt = """
                 <start_of_turn>user
                 $prompt<end_of_turn>
