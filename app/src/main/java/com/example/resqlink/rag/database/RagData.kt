@@ -11,7 +11,6 @@ data class RagChunk(
     val docTitle: String,
     val content: String,
     val chunkId: String,
-    // 필요에 따라 pageStart, sourceUrl 등 추가
 )
 
 // manifest.json의 메타데이터

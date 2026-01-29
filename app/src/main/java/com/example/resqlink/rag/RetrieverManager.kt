@@ -21,7 +21,6 @@ class RetrievalManager(
         val queryVector = embeddingHelper.embed(query) ?: return emptyList()
 
         // 2. 코사인 유사도 검색 (Brute-force)
-        // 데이터가 아주 많지 않다면(< 10,000) 이 방식도 모바일에서 충분히 빠릅니다.
         val docEmbeddings = dataPackLoader.embeddings ?: return emptyList()
         val scores = ArrayList<Pair<Int, Float>>()
 
