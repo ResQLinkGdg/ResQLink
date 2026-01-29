@@ -40,6 +40,7 @@ import com.example.resqlink.ui.feature_sos.inbox.SosInboxRoute
 import com.google.android.gms.nearby.connection.Strategy
 import java.security.Permission
 import java.util.jar.Manifest
+import com.example.resqlink.ui.feature_guide.GuideScreen
 
 
 class MainActivity : ComponentActivity() {
@@ -197,7 +198,7 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(AppRoute.Guide.route) {
-                            /* GuideRoute */
+                            GuideScreen()
                         }
 
                         composable(AppRoute.Settings.route) {
