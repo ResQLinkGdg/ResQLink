@@ -12,6 +12,14 @@ android {
     namespace = "com.example.resqlink"
     compileSdk = 36
 
+    packaging {
+        jniLibs {
+            // 16KB 페이지 크기 기기에서 라이브러리를 직접 메모리에 매핑할 수 있도록
+            // 압축을 풀고 정렬된 상태로 APK에 포함시킵니다.
+            useLegacyPackaging = false
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.resqlink"
         minSdk = 26
