@@ -1,11 +1,15 @@
 package com.example.resqlink
 
+import android.os.Build
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
+import androidx.activity.result.contract.ActivityResultContracts
 import androidx.compose.foundation.layout.padding
 import androidx.compose.material3.Scaffold
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Modifier
 import androidx.lifecycle.lifecycleScope
 import androidx.navigation.compose.NavHost
@@ -26,6 +30,7 @@ import com.example.resqlink.platform.reach.receiver.ReachReceiver
 import com.example.resqlink.platform.transport.nearby.NearbyConfig
 import com.example.resqlink.platform.transport.nearby.NearbyTransport
 import com.example.resqlink.ui.AppRoute
+import com.example.resqlink.ui.common.PermissionScreen
 import com.example.resqlink.ui.common.component.BottomNavBar
 import com.example.resqlink.ui.common.model.BottomTab
 import com.example.resqlink.ui.feature_responder.RadarRoute
@@ -33,17 +38,182 @@ import com.example.resqlink.ui.feature_responder.RadarViewModelFactory
 import com.example.resqlink.ui.feature_sos.compose.SosComposeRoute
 import com.example.resqlink.ui.feature_sos.inbox.SosInboxRoute
 import com.google.android.gms.nearby.connection.Strategy
+import java.security.Permission
+import java.util.jar.Manifest
 
 
 class MainActivity : ComponentActivity() {
 
-    // ★ circular dependency 깨려고 lateinit + provider 사용
+    private var isPermissionGranted by mutableStateOf(false)
+
+    //  핵심 엔진 부품들을 클래스 멤버로 승격
     private lateinit var transport: Transport
+    private lateinit var identityStore: IdentityStore
+    private lateinit var reachControl: ReachControlUseCase
+    private lateinit var factory: RadarViewModelFactory
+    // 1. 권한 요청 결과 처리기
+    private val requestPermissionLauncher = registerForActivityResult(
+        ActivityResultContracts.RequestMultiplePermissions()
+    ) { permissions ->
+        val allRequiredGranted = permissions.entries
+            .filter { it.key in getRequiredPermissions() }
+            .all { it.value }
+
+        if (allRequiredGranted) {
+            isPermissionGranted = true // ⭐ 상태 업데이트 -> UI가 자동으로 메인으로 바뀜
+            startNearbyServices()       // ⭐ 이제서야 엔진 가동!
+        }
+    }
+
+    private fun getRequiredPermissions(): Array<String> {
+        return if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.S) {
+            arrayOf(
+                android.Manifest.permission.BLUETOOTH_SCAN,
+                android.Manifest.permission.BLUETOOTH_ADVERTISE,
+                android.Manifest.permission.BLUETOOTH_CONNECT,
+                android.Manifest.permission.ACCESS_FINE_LOCATION,
+                android.Manifest.permission.NEARBY_WIFI_DEVICES
+            )
+        } else {
+            arrayOf(android.Manifest.permission.ACCESS_FINE_LOCATION)
+        }
+    }
+
+    // 2. 버튼 클릭 시 호출할 함수
+    private fun requestAllPermissions() {
+        val permissions = getRequiredPermissions().toMutableList()
+        if (Build.VERSION.SDK_INT >= Build.VERSION_CODES.TIRAMISU) {
+            permissions.add(android.Manifest.permission.POST_NOTIFICATIONS)
+        }
+        requestPermissionLauncher.launch(permissions.toTypedArray())
+    }
+
+    private fun startNearbyServices() {
+        if (::transport.isInitialized && transport is NearbyTransport) {
+            (transport as NearbyTransport).startAdvertising()
+            (transport as NearbyTransport).startDiscovery()
+        }
+    }
+
+    // ★ circular dependency 깨려고 lateinit + provider 사용
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        val identityStore = IdentityStore(this)
+        // 1. 앱 시작 시 권한 상태 초기화
+        isPermissionGranted = getRequiredPermissions().all {
+            checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+        }
+
+        // 2. 엔진들은 일단 초기화 (나중에 권한 얻으면 startNearbyServices 호출)
+        setupEngines()
+
+        if (isPermissionGranted) {
+            startNearbyServices()
+        }
+
+
+        setContent {
+            // 1. 이미 권한이 있는지 체크
+            isPermissionGranted = getRequiredPermissions().all {
+                checkSelfPermission(it) == android.content.pm.PackageManager.PERMISSION_GRANTED
+            }
+
+            if (!isPermissionGranted) {
+                // ⭐ 권한이 없을 때만 이 화면을 보여줌
+                PermissionScreen(
+                    onGrantClick = { requestAllPermissions() },
+                    onLaterClick = { finish() }
+                )
+            } else {
+                // ⭐ 권한이 있을 때만 메인 UI(Scaffold)를 보여줌
+                val navController = rememberNavController()
+                val currentBackStack by navController.currentBackStackEntryAsState()
+                val currentRoute = currentBackStack?.destination?.route
+
+                val currentTab = when (currentRoute) {
+                    AppRoute.SosInbox.route -> BottomTab.SOS
+                    AppRoute.Guide.route -> BottomTab.GUIDE
+                    AppRoute.Settings.route -> BottomTab.SETTINGS
+                    else -> BottomTab.SOS   // Radar 같은 상세 화면
+                }
+
+                // 현재 route → BottomTab 매핑 로직 등...
+                Scaffold(
+                    bottomBar = { BottomNavBar(
+                        selected = currentTab,
+                        onSelect = { tab ->
+
+                            val targetRoute = when (tab) {
+                                BottomTab.SOS -> AppRoute.SosInbox.route
+                                BottomTab.GUIDE -> AppRoute.Guide.route
+                                BottomTab.SETTINGS -> AppRoute.Settings.route
+                            }
+
+                            // 🔥 Radar 위에 있을 때 SOS 누르면 pop
+                            if (currentRoute == AppRoute.Radar.route &&
+                                targetRoute == AppRoute.SosInbox.route
+                            ) {
+                                navController.popBackStack()
+                            } else {
+                                navController.navigate(targetRoute) {
+                                    popUpTo(navController.graph.startDestinationId) {
+                                        saveState = true
+                                    }
+                                    launchSingleTop = true
+                                    restoreState = true
+                                }
+                            }
+                        }
+                    ) }
+                ) { padding ->
+                    NavHost(
+                        navController = navController,
+                        startDestination = AppRoute.SosInbox.route,
+                        modifier = Modifier.padding(padding)
+                    ) {
+                        composable(AppRoute.SosInbox.route) {
+                            SosInboxRoute(
+                                reachControlUseCase = reachControl,
+                                onOpenRadar = {
+                                    navController.navigate(AppRoute.Radar.route)
+                                },
+                                onNavigateToCompose = {
+                                    navController.navigate(AppRoute.SosCompose.route)
+                                }
+                            )
+                        }
+
+                        composable(AppRoute.Radar.route) {
+                            RadarRoute(factory = factory)
+                        }
+
+                        composable(AppRoute.SosCompose.route) {
+                            SosComposeRoute(
+                                navController = navController,
+                                reachControlUseCase = reachControl,
+                                identityStore = identityStore
+                            )
+                        }
+
+                        composable(AppRoute.Guide.route) {
+                            /* GuideRoute */
+                        }
+
+                        composable(AppRoute.Settings.route) {
+                            /* SettingsRoute */
+                        }
+                    }
+                }
+            }
+
+        }
+
+
+    }
+
+    private fun setupEngines() {
+        identityStore= IdentityStore(this)
         val mySenderId = identityStore.getMyId()
         val codec = MessageCodec()
         val dedup = InMemoryDedupStore()
@@ -74,7 +244,7 @@ class MainActivity : ComponentActivity() {
             strategy = Strategy.P2P_CLUSTER
         )
 
-        val reachControl = ReachControlUseCase(
+        reachControl = ReachControlUseCase(
             transport = transport,
             locationProvider = locationProvider,
             codec = codec,
@@ -82,101 +252,11 @@ class MainActivity : ComponentActivity() {
             applyIncomingSos = applyIncomingSos
         )
 
-        val factory = RadarViewModelFactory(
+        factory = RadarViewModelFactory(
             store = store,
             reachControl = reachControl,
             setRadarMode = SetRadarModeUsecase(store),
             refreshMyLocation = RefreshMyLocationUsecase(  locationProvider, store)
         )
-
-
-        setContent {
-            val navController = rememberNavController()
-
-            // 현재 route → BottomTab 매핑
-            val currentBackStack by navController.currentBackStackEntryAsState()
-            val currentRoute = currentBackStack?.destination?.route
-
-            val currentTab = when (currentRoute) {
-                AppRoute.SosInbox.route -> BottomTab.SOS
-                AppRoute.Guide.route -> BottomTab.GUIDE
-                AppRoute.Settings.route -> BottomTab.SETTINGS
-                else -> BottomTab.SOS   // Radar 같은 상세 화면
-            }
-
-            Scaffold(
-                bottomBar = {
-                    BottomNavBar(
-                        selected = currentTab,
-                        onSelect = { tab ->
-
-                            val targetRoute = when (tab) {
-                                BottomTab.SOS -> AppRoute.SosInbox.route
-                                BottomTab.GUIDE -> AppRoute.Guide.route
-                                BottomTab.SETTINGS -> AppRoute.Settings.route
-                            }
-
-                            // 🔥 Radar 위에 있을 때 SOS 누르면 pop
-                            if (currentRoute == AppRoute.Radar.route &&
-                                targetRoute == AppRoute.SosInbox.route
-                            ) {
-                                navController.popBackStack()
-                            } else {
-                                navController.navigate(targetRoute) {
-                                    popUpTo(navController.graph.startDestinationId) {
-                                        saveState = true
-                                    }
-                                    launchSingleTop = true
-                                    restoreState = true
-                                }
-                            }
-                        }
-                    )
-                }
-            ) { padding ->
-
-                NavHost(
-                    navController = navController,
-                    startDestination = AppRoute.SosInbox.route,
-                    modifier = Modifier.padding(padding),
-                ) {
-
-                    composable(AppRoute.SosInbox.route) {
-                        SosInboxRoute(
-                            reachControlUseCase = reachControl,
-                            onOpenRadar = {
-                                navController.navigate(AppRoute.Radar.route)
-                            },
-                            onNavigateToCompose = {
-                                navController.navigate(AppRoute.SosCompose.route)
-                            }
-                        )
-                    }
-
-                    composable(AppRoute.Radar.route) {
-                        RadarRoute(factory = factory)
-                    }
-
-                    composable(AppRoute.SosCompose.route) {
-                        SosComposeRoute(
-                            navController = navController,
-                            reachControlUseCase = reachControl,
-                            identityStore = identityStore
-                        )
-                    }
-
-                    composable(AppRoute.Guide.route) {
-                        /* GuideRoute */
-                    }
-
-                    composable(AppRoute.Settings.route) {
-                        /* SettingsRoute */
-                    }
-
-                }
-            }
-        }
-
-
     }
 }

@@ -54,7 +54,8 @@ fun SosInboxScreen(
                 contentPadding = PaddingValues(16.dp),
                 verticalArrangement = Arrangement.spacedBy(12.dp)
             ) {
-                items(reports, key = { it.id }) {
+                //  id를 기준으로 중복을 제거한 리스트만 그립니다.
+                items(reports.distinctBy { it.id }, key = { it.id }) {
                     ReportCard(it)
                 }
             }
