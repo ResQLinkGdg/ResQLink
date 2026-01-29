@@ -1,5 +1,4 @@
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
-import java.util.Properties
 
 plugins {
     alias(libs.plugins.android.application)
@@ -80,6 +79,7 @@ dependencies {
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.room.ktx)
+
     // RAG-base에서 추가된 UI 요소
     implementation(libs.androidx.core.ktx)
     implementation(libs.androidx.activity.ktx)

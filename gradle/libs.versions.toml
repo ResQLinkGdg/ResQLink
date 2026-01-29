@@ -65,6 +65,7 @@ androidx-compose-material-icons-extended = { module = "androidx.compose.material
 androidx-navigation-compose = { group = "androidx.navigation", name = "navigation-compose", version.ref = "navigationCompose" }
 room-ktx = { group = "androidx.room", name = "room-ktx", version.ref = "roomKtx" }
 
+
 # 5. Google Services & Coroutines
 play-services-nearby = { group = "com.google.android.gms", name = "play-services-nearby", version.ref = "playServicesNearby" }
 play-services-location = { group = "com.google.android.gms", name = "play-services-location", version.ref = "playServicesLocation" }

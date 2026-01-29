@@ -3,6 +3,7 @@ package com.example.resqlink.rag.generation
 import android.content.Context
 import android.util.Log
 import com.example.resqlink.BuildConfig
+import com.google.ai.client.generativeai.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig

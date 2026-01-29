@@ -77,6 +77,7 @@ class RadarViewModel(
         else stopGpsPolling()
     }
 
+<<<<<<< HEAD
     /**
      * 윤경: onSendSos 변경됐는데 Radar 화면에서 필요 없는 것 같아서 주석처리합니다
      */
@@ -85,6 +86,13 @@ class RadarViewModel(
 //            reachControl.sendSos(ttl = ttl, text = text)
 //        }
 //    }
+=======
+    fun onSendSos(ttl: Int, text: String?) {
+        viewModelScope.launch {
+            reachControl.sendSos(ttl = ttl, text = text)
+        }
+    }
+>>>>>>> c3c7fa588f6255b2cb07249899b5fd067c0b13e4
 
     private fun startGpsPolling() {
         if (gpsPollingJob?.isActive == true) return
