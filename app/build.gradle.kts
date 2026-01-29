@@ -12,6 +12,14 @@ android {
     namespace = "com.example.resqlink"
     compileSdk = 36
 
+    packaging {
+        jniLibs {
+            // 16KB 페이지 크기 기기에서 라이브러리를 직접 메모리에 매핑할 수 있도록
+            // 압축을 풀고 정렬된 상태로 APK에 포함시킵니다.
+            useLegacyPackaging = false
+        }
+    }
+
     defaultConfig {
         applicationId = "com.example.resqlink"
         minSdk = 26
@@ -92,6 +100,15 @@ dependencies {
     // 6. AI & MediaPipe (RAG-base에서 새롭게 도입된 영역)
     implementation(libs.mediapipe.tasks.text)
     implementation(libs.mediapipe.tasks.genai)
+    implementation(libs.google.generativeai)
+
+    // 1. Serialization (JSON 파싱용)
+    implementation(libs.kotlinx.serialization.json)
+
+    // 2. MediaPipe Text (임베딩 추출용)
+    implementation(libs.mediapipe.tasks.text)
+
+    // 3. Gemini API (답변 생성용)
     implementation(libs.google.generativeai)
 
     // 7. Testing

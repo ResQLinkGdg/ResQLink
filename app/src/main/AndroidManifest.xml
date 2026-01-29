@@ -23,6 +23,9 @@
         tools:targetApi="s" />
 
     <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES"  />
+    <uses-permission android:name="android.permission.NEARBY_WIFI_DEVICES" android:minSdkVersion="32" />
+    <!--잠깐 테스트 위해 추가-->
+    <uses-permission android:name="android.permission.INTERNET" />
 
     <application
         android:allowBackup="true"

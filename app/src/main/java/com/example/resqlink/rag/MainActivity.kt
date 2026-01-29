@@ -1,89 +1,140 @@
 package com.example.resqlink.rag
 
-
 import android.os.Bundle
-import android.util.Log
-import android.widget.TextView
-import androidx.appcompat.app.AppCompatActivity
+import androidx.activity.ComponentActivity
+import androidx.activity.compose.setContent
+import androidx.compose.foundation.layout.*
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
+import androidx.compose.material3.*
+import androidx.compose.runtime.*
+import androidx.compose.ui.Alignment
+import androidx.compose.ui.Modifier
+import androidx.compose.ui.unit.dp
 import androidx.lifecycle.lifecycleScope
-import androidx.room.Room
-import com.example.resqlink.rag.database.AppDatabase
-import com.example.resqlink.rag.EmbeddingHelper
-import com.example.resqlink.rag.generation.GenAiManager
-import com.example.resqlink.rag.database.ManualSearchManager
-import com.example.resqlink.rag.RagIntegrationTester
-import kotlinx.coroutines.delay
+import com.example.resqlink.rag.database.DataPackLoader
 import kotlinx.coroutines.launch
 
-class MainActivity : AppCompatActivity() {
+class MainActivity : ComponentActivity() {
 
-    // 화면에 로그를 찍어주기 위한 텍스트뷰 (XML 없이 코드로 생성)
-    private lateinit var statusTextView: TextView
+    private lateinit var viewModel: RagViewModel
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
 
-        // 1. 간단한 UI 설정 (테스트 진행상황을 화면에 표시)
-        statusTextView = TextView(this).apply {
-            text = "RAG 시스템 초기화 중..."
-            textSize = 18f
-            setPadding(50, 50, 50, 50)
-        }
-        setContentView(statusTextView)
+        // 1. RAG 컴포넌트 초기화
+        val dataPackLoader = DataPackLoader(this)
+        val embeddingHelper = EmbeddingHelper(this)
 
-        // 2. 비동기 작업 시작
+        // [변경] context(this)를 생성자에 전달합니다.
+        val inferenceModel = InferenceModel(this)
+
+        // 2. 비동기 초기화 (데이터팩 로드 + 모델 로드)
         lifecycleScope.launch {
-            try {
-                runRagSystemTest()
-            } catch (e: Exception) {
-                Log.e("RAG_TEST", "테스트 중 치명적 오류 발생", e)
-                statusTextView.text = "오류 발생: ${e.message}"
+            // 동시에 로드하여 속도 향상
+            launch { dataPackLoader.loadDataPack() }
+            launch { embeddingHelper.initialize() }
+            launch { inferenceModel.initialize() } // [변경] LLM 모델 로드 호출
+        }
+
+        // 파이프라인 조립
+        val retrievalManager = RetrievalManager(dataPackLoader, embeddingHelper)
+        val ragPipeline = RagPipeline(inferenceModel, retrievalManager)
+        viewModel = RagViewModel(ragPipeline)
+
+        // 화면 설정 (Compose)
+        setContent {
+            MaterialTheme {
+                Surface(
+                    modifier = Modifier.fillMaxSize(),
+                    color = MaterialTheme.colorScheme.background
+                ) {
+                    RagScreen(viewModel)
+                }
             }
         }
     }
+}
 
-    private suspend fun runRagSystemTest() {
-        updateStatus("1. 데이터베이스 구축 중...")
+// 3. UI 구성 요소
+@Composable
+fun RagScreen(viewModel: RagViewModel) {
+    // ViewModel의 상태를 관찰 (값이 바뀌면 화면이 자동 갱신됨)
+    val answer by viewModel.answer.collectAsState()
+    val isLoading by viewModel.isLoading.collectAsState()
 
-        // [초기화] Room DB 빌드
-        val db = Room.databaseBuilder(
-            applicationContext,
-            AppDatabase::class.java,
-            "rag-database" // DB 파일 이름
+    // 입력창의 텍스트 상태
+    var queryText by remember { mutableStateOf("") }
+    val scrollState = rememberScrollState()
+
+    Column(
+        modifier = Modifier
+            .fillMaxSize()
+            .padding(16.dp)
+            .verticalScroll(scrollState), // 스크롤 가능하게 설정
+        horizontalAlignment = Alignment.CenterHorizontally
+    ) {
+        Text(
+            text = "재난 대응 매뉴얼 봇",
+            style = MaterialTheme.typography.headlineSmall,
+            modifier = Modifier.padding(bottom = 24.dp)
         )
-            .fallbackToDestructiveMigration() // 스키마 변경 시 기존 데이터 삭제 (테스트용)
-            .build()
 
-        // [초기화] 각 매니저 클래스 생성
-        val dao = db.manualDao()
+        // 질문 입력창
+        OutlinedTextField(
+            value = queryText,
+            onValueChange = { queryText = it },
+            label = { Text("질문을 입력하세요") },
+            modifier = Modifier.fillMaxWidth(),
+            singleLine = false,
+            maxLines = 3
+        )
 
-        // assets 폴더의 모델 파일을 로드하므로 Context(this)가 필요함
-        val embeddingHelper = EmbeddingHelper(this)
+        Spacer(modifier = Modifier.height(16.dp))
 
-        val searchManager = ManualSearchManager(dao, embeddingHelper)
-
-        // GenAiManager 생성 (API Key 방식 또는 Nano 방식에 따라 생성자 파라미터 확인 필요)
-        // 만약 API Key를 쓴다면: GenAiManager("YOUR_API_KEY")
-        // 만약 Nano(Context)를 쓴다면: GenAiManager(this)
-        val genAiManager = GenAiManager(this)
-
-        // [테스트] 통합 테스터 실행
-        val tester = RagIntegrationTester(dao, embeddingHelper, searchManager, genAiManager)
-
-        updateStatus("2. 테스트 데이터 주입 및 검색 시작...")
-        delay(1000) // UI 갱신을 위해 잠시 대기
-
-        // 실제 테스트 로직 실행 (Logs는 Logcat 확인)
-        tester.runFullTest()
-
-        updateStatus("3. 테스트 완료!\nLogcat에서 'RAG_TEST' 태그를 확인하세요.")
-    }
-
-    // 화면에 글씨를 바꿔주는 도우미 함수
-    private fun updateStatus(message: String) {
-        runOnUiThread {
-            statusTextView.text = message
+        // 전송 버튼
+        Button(
+            onClick = {
+                if (queryText.isNotBlank()) {
+                    viewModel.ask(queryText)
+                }
+            },
+            modifier = Modifier.fillMaxWidth(),
+            enabled = !isLoading // 로딩 중엔 버튼 비활성화
+        ) {
+            Text(if (isLoading) "답변 생성 중..." else "질문하기")
         }
-        Log.d("RAG_ACTIVITY", message)
+
+        Spacer(modifier = Modifier.height(24.dp))
+
+        // 로딩 인디케이터
+        if (isLoading) {
+            CircularProgressIndicator()
+        }
+
+        Spacer(modifier = Modifier.height(16.dp))
+
+        // 답변 출력 영역
+        if (answer.isNotEmpty()) {
+            Card(
+                modifier = Modifier.fillMaxWidth(),
+                colors = CardDefaults.cardColors(
+                    containerColor = MaterialTheme.colorScheme.surfaceVariant
+                )
+            ) {
+                Column(modifier = Modifier.padding(16.dp)) {
+                    Text(
+                        text = "답변:",
+                        style = MaterialTheme.typography.labelLarge,
+                        color = MaterialTheme.colorScheme.primary
+                    )
+                    Spacer(modifier = Modifier.height(8.dp))
+                    Text(
+                        text = answer,
+                        style = MaterialTheme.typography.bodyMedium
+                    )
+                }
+            }
+        }
     }
 }
