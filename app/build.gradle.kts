@@ -98,7 +98,6 @@ dependencies {
     // 3. Google Play Services & Serialization
     implementation(libs.play.services.nearby)
     implementation(libs.play.services.location)
-    implementation(libs.kotlinx.serialization.json)
     // RAG-base에서 추가된 데이터 핸들링
     implementation(libs.gson)
 
@@ -117,9 +116,7 @@ dependencies {
     ksp(libs.androidx.room.compiler)
 
     // 6. AI & MediaPipe (RAG-base에서 새롭게 도입된 영역)
-    implementation(libs.mediapipe.tasks.text)
     implementation(libs.mediapipe.tasks.genai)
-    implementation(libs.google.generativeai)
 
     // 1. Serialization (JSON 파싱용)
     implementation(libs.kotlinx.serialization.json)

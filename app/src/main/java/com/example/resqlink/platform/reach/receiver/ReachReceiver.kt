@@ -20,7 +20,6 @@ class ReachReceiver(
 
     override fun onPayloadReceived(fromEndpointId: String, bytes: ByteArray, rssi: Int?) {
         val envelope = codec.decode(bytes)?: return
-<<<<<<< HEAD
 
         //  내 신호인지 확인 (내가 최초 송신자라면 처리하지 않음)
         if (envelope.senderId == mySenderId) {
@@ -31,15 +30,6 @@ class ReachReceiver(
             applyIncomingSos(envelope = envelope, rssiDbm = rssi)
         }
 
-=======
-
-        if (dedup.isDuplicate(envelope.msgId)) return
-
-        scope.launch {
-            applyIncomingSos(envelope = envelope, rssiDbm = rssi)
-        }
-
->>>>>>> c3c7fa588f6255b2cb07249899b5fd067c0b13e4
         if (envelope.ttl <= 0) return
 
         val currentTransport = transportProvider()

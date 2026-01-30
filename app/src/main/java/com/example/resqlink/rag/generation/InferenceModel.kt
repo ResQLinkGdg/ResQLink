@@ -3,7 +3,6 @@ package com.example.resqlink.rag.generation
 import android.content.Context
 import android.util.Log
 import com.example.resqlink.BuildConfig
-import com.google.ai.client.generativeai.BuildConfig
 import com.google.ai.client.generativeai.GenerativeModel
 import com.google.ai.client.generativeai.type.content
 import com.google.ai.client.generativeai.type.generationConfig
@@ -111,7 +110,7 @@ class InferenceModel(private val context: Context) {
 //                <start_of_turn>user
 //                $prompt<end_of_turn>
 //                <start_of_turn>model
-//            """.trimIndent()
+//            "" ".trimIndent()
 //
 //            // 추론 실행
 //            llmInference?.generateResponse(formattedPrompt) ?: "답변 생성 실패"

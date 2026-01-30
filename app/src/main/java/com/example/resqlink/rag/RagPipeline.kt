@@ -16,7 +16,7 @@ class RagPipeline(
         val prompt = buildPrompt(userQuery, relevantDocs)
 
         // 3. 답변 생성 (Generate)
-        return inferenceModel.generateResponse(prompt)
+        return inferenceModel.generateResponse(prompt)?: "답변을 생성하지 못했습니다."
     }
 
     private fun buildPrompt(query: String, docs: List<RagChunk>): String {

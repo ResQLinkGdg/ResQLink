@@ -16,7 +16,7 @@ import com.example.resqlink.rag.database.DataPackLoader
 import com.example.resqlink.rag.generation.InferenceModel
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainAcivity : ComponentActivity() {
 
     private lateinit var viewModel: RagViewModel
 
