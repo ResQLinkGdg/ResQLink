@@ -14,7 +14,7 @@ class InferenceModel(private val context: Context) {
     // 🟢 Gemini 모델 설정
     // flash 모델이 빠르고 저렴하며 RAG 답변용으로 충분합니다.
     private val generativeModel = GenerativeModel(
-        modelName = "gemini-1.5-flash",
+        modelName = "gemini-2.5-flash-lite",
         apiKey = BuildConfig.GEMINI_API_KEY, // build.gradle에서 설정한 키 사용
         generationConfig = generationConfig {
             temperature = 0.5f // 답변의 창의성 조절 (0.0 ~ 1.0)

@@ -17,8 +17,9 @@ class RetrievalManager(
             return emptyList()
         }
 
+        val queryWithPrefix = "query: $query"
         // 1. 질문(Query) 임베딩
-        val queryVector = embeddingHelper.embed(query) ?: return emptyList()
+        val queryVector = embeddingHelper.embed(queryWithPrefix) ?: return emptyList()
 
         // 2. 코사인 유사도 검색 (Brute-force)
         val docEmbeddings = dataPackLoader.embeddings ?: return emptyList()

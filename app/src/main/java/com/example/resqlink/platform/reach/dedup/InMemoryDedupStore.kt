@@ -4,14 +4,15 @@ class InMemoryDedupStore(
     private val ttlMs: Long = 5 * 60 * 1000L // 5분
 ) : DedupStore {
 
+    private val lock = Any()
     private val store = mutableMapOf<String, Long>()
 
-    override fun isDuplicate(msgId: String): Boolean {
+    override fun isDuplicate(msgId: String): Boolean = synchronized(lock) {
         cleanup()
-        return store.containsKey(msgId)
+        store.containsKey(msgId)
     }
 
-    override fun mark(msgId: String) {
+    override fun mark(msgId: String) =synchronized(lock) {
         store[msgId] = System.currentTimeMillis() + ttlMs
     }
 

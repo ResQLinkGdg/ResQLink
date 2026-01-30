@@ -134,6 +134,5 @@ dependencies {
 
     // 7. Material Icons (Outlined / Filled 등)
     implementation(libs.androidx.compose.material.icons.extended)
-
-    implementation(libs.google.generativeai)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 }
