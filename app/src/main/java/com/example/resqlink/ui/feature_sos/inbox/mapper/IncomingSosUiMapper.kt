@@ -41,10 +41,20 @@ private fun SosSituation.displayName(): String =
     }
 
 private fun IncomingSosEvent.estimateDistanceM(): Int? {
-    val lastHop = hops.lastOrNull() ?: return null
-    val rssi = lastHop.rssi ?: return null
 
-    // ⚠️ 임시 RSSI → 거리 추정 (나중에 분리 추천)
+    // 1순위: GPS 좌표가 있다면 정밀 계산 실행
+    if (payloadLocation != null && myLocation != null) {
+        val results = FloatArray(1)
+        android.location.Location.distanceBetween(
+            myLocation.lat, myLocation.lng,      // 내 위치
+            payloadLocation.lat, payloadLocation.lng, // 상대 위치
+            results
+        )
+        return results[0].toInt() // 미터(m) 단위 결과 반환
+    }
+
+    // 2순위: 좌표가 없으면 기존 RSSI 추정 로직 사용
+    val rssi = rssiDbm ?: hops.lastOrNull()?.rssi ?: return null
     return when {
         rssi >= -60 -> 10
         rssi >= -70 -> 30

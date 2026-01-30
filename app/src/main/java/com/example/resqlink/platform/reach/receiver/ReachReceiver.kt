@@ -1,5 +1,6 @@
 package com.example.resqlink.platform.reach.receiver
 
+import android.util.Log
 import com.example.resqlink.domain.gateway.Transport
 import com.example.resqlink.domain.usecase.radar.ApplyIncomingSosUsecase
 import com.example.resqlink.platform.reach.dedup.DedupStore
@@ -19,10 +20,20 @@ class ReachReceiver(
 ) : TransportCallbacks {
 
     override fun onPayloadReceived(fromEndpointId: String, bytes: ByteArray, rssi: Int?) {
-        val envelope = codec.decode(bytes)?: return
 
-        //  내 신호인지 확인 (내가 최초 송신자라면 처리하지 않음)
+        // 1. 데이터 도착 로그
+        Log.d("ResQLink_Net", "[수신] 데이터 도착 (From: $fromEndpointId, Size: ${bytes.size} bytes)")
+
+        val envelope = codec.decode(bytes) ?: run {
+            Log.e("ResQLink_Net", "[에러] 디코딩 실패")
+            return
+        }
+
+        // 2. 메시지 정보 로그
+        Log.d("ResQLink_Net", " [분석] MsgId: ${envelope.msgId}, SenderId: ${envelope.senderId}, Type: ${envelope.type}")
+
         if (envelope.senderId == mySenderId) {
+            Log.d("ResQLink_Net", " [필터] 내가 보낸 신호이므로 처리를 중단합니다. (MyId: $mySenderId)")
             return
         }
 
