@@ -67,7 +67,6 @@ class MainActivity : ComponentActivity() {
 
         if (allRequiredGranted) {
             isPermissionGranted = true
-
         }
     }
 
@@ -113,7 +112,6 @@ class MainActivity : ComponentActivity() {
         setupRagEngine()
 
         if (isPermissionGranted) {
-
         }
 
         setContent {
