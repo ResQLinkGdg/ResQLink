@@ -86,3 +86,7 @@ local.properties
 .env
 .env.*
 google-services.json
+
+*.tflite
+*.model
+app/src/main/assets/

@@ -16,6 +16,7 @@ import kotlin.math.cos
 import kotlin.math.roundToInt
 import kotlin.math.sin
 import kotlin.math.sqrt
+
 private data class CalcResult(
     val bucket: RangeBucket,
     val approxText: String?,
@@ -44,6 +45,7 @@ class InMemoryRadarStateStore(
         var approxRangeText: String?,
         var bucket: RangeBucket,
         var distanceM: Double?
+
     )
 
     private val lock = Any()
@@ -86,7 +88,7 @@ class InMemoryRadarStateStore(
 
             val estimate = estimator.update(originId, rssiDbm, now)
 
-            val res = if (_mode.value == RadarMode.GPS_ON && effectiveMyLoc != null && payloadLocation != null) {
+            val res = if (effectiveMyLoc != null && payloadLocation != null) {
                 val d = calculateGpsDistance(effectiveMyLoc, payloadLocation)
                 //  Triple 대신 CalcResult 사용
                 CalcResult(

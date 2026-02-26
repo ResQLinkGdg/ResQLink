@@ -1,3 +1,5 @@
+import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
+
 plugins {
     alias(libs.plugins.android.application)
     alias(libs.plugins.kotlin.android)
@@ -6,9 +8,31 @@ plugins {
     alias(libs.plugins.compose.compiler)
 }
 
+// 여기서 파일을 텍스트로 직접 읽어 키를 찾음
+val apiKey: String = try {
+    val file = rootProject.file("local.properties")
+    if (file.exists()) {
+        // 파일의 줄들을 읽어서 "GEMINI_API_KEY"로 시작하는 줄을 찾고, "=" 뒷부분만 가져옵니다.
+        file.readLines()
+            .find { it.trim().startsWith("GEMINI_API_KEY") }
+            ?.substringAfter("=")
+            ?.trim() ?: ""
+    } else {
+        ""
+    }
+} catch (e: Exception) {
+    "" // 에러 나면 빈 문자열
+}
+
 android {
     namespace = "com.example.resqlink"
     compileSdk = 36
+
+    packaging {
+        jniLibs {
+            useLegacyPackaging = true
+        }
+    }
 
     defaultConfig {
         applicationId = "com.example.resqlink"
@@ -17,7 +41,10 @@ android {
         versionCode = 1
         versionName = "1.0"
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
+
+        buildConfigField("String", "GEMINI_API_KEY", "\"$apiKey\"")
     }
+
 
     buildTypes {
         release {
@@ -38,9 +65,11 @@ android {
     }
     buildFeatures {
         compose = true
+        buildConfig = true //임시
     }
 }
 
+// 의존성 블록
 dependencies {
     // 1. Android 기본 & UI
     implementation(libs.androidx.appcompat)
@@ -50,6 +79,11 @@ dependencies {
     implementation(libs.androidx.foundation)
     implementation(libs.androidx.navigation.compose)
     implementation(libs.room.ktx)
+
+    // RAG-base에서 추가된 UI 요소
+    implementation(libs.androidx.core.ktx)
+    implementation(libs.androidx.activity.ktx)
+    implementation(libs.androidx.constraintlayout)
 
     // 2. Compose BOM 및 관련 라이브러리 (버전 충돌 방지)
     val composeBom = platform(libs.androidx.compose.bom)
@@ -64,11 +98,16 @@ dependencies {
     // 3. Google Play Services & Serialization
     implementation(libs.play.services.nearby)
     implementation(libs.play.services.location)
-    implementation(libs.kotlinx.serialization.json)
+    // RAG-base에서 추가된 데이터 핸들링
+    implementation(libs.gson)
 
-    // 4. Lifecycle & ViewModel
+    // 4. Lifecycle & ViewModel (HEAD 기준 + Coroutines 추가)
     implementation(libs.androidx.lifecycle.runtime.compose)
     implementation(libs.androidx.lifecycle.viewmodel.compose)
+    // RAG-base에서 추가된 KTX 및 코루틴
+    implementation(libs.androidx.lifecycle.viewmodel.ktx)
+    implementation(libs.androidx.lifecycle.runtime.ktx)
+    implementation(libs.kotlinx.coroutines.android)
 
     // 5. Room Database
     implementation(libs.androidx.room.runtime)
@@ -76,11 +115,24 @@ dependencies {
     implementation(libs.androidx.room.common.jvm)
     ksp(libs.androidx.room.compiler)
 
-    // 6. Testing
+    // 6. AI & MediaPipe (RAG-base에서 새롭게 도입된 영역)
+    implementation(libs.mediapipe.tasks.genai)
+
+    // 1. Serialization (JSON 파싱용)
+    implementation(libs.kotlinx.serialization.json)
+
+    // 2. MediaPipe Text (임베딩 추출용)
+    implementation(libs.mediapipe.tasks.text)
+
+    // 3. Gemini API (답변 생성용)
+    implementation(libs.google.generativeai)
+
+    // 7. Testing
     testImplementation(libs.junit)
     androidTestImplementation(libs.androidx.junit)
     androidTestImplementation(libs.androidx.espresso.core)
 
     // 7. Material Icons (Outlined / Filled 등)
     implementation(libs.androidx.compose.material.icons.extended)
+    implementation("com.google.ai.client.generativeai:generativeai:0.9.0")
 }

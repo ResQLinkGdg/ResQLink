@@ -21,9 +21,8 @@ interface RadarStateStore {
         rssiDbm: Int?,
         payloadLocation: GeoLocation?,  // SOS payload lat/lng
         myLocation: GeoLocation?        // GPS ON일 때만 필요
-    ){
 
-    }
+    )
 
     fun onMyLocationUpdated(myLocation: GeoLocation)
 

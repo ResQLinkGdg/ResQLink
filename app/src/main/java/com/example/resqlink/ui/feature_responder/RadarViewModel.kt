@@ -86,6 +86,7 @@ class RadarViewModel(
 //        }
 //    }
 
+
     private fun startGpsPolling() {
         if (gpsPollingJob?.isActive == true) return
         gpsPollingJob = viewModelScope.launch {

@@ -1,5 +1,6 @@
 package com.example.resqlink.domain.usecase.radar
 
+import android.util.Log
 import com.example.resqlink.data.store.RadarStateStore
 import com.example.resqlink.domain.gateway.GeoLocation
 import com.example.resqlink.domain.gateway.LocationProvider
@@ -31,9 +32,11 @@ class ApplyIncomingSosUsecase(
     ) {
         if (envelope.type != MessageType.SOS) return
 
-        val senderId= extractOriginId(envelope)
-        //  필터링 추가: 이 메시지를 처음 만든 사람이 '나'라면 레이더에 표시하지 않음
-        if (senderId == mySenderId) {
+        val originId = extractOriginId(envelope)
+        Log.d("ResQLink_Apply", "[가공] OriginId: $originId, MsgId: ${envelope.msgId}")
+
+        if (originId == mySenderId) {
+            Log.d("ResQLink_Apply", "[필터] 내가 최초 발신한 SOS입니다.")
             return
         }
 
@@ -43,15 +46,14 @@ class ApplyIncomingSosUsecase(
             if (payload.lat != null && payload.lng != null)
                 GeoLocation(payload.lat, payload.lng)
             else null
-
+        Log.d("ResQLink_Apply", "📍 [좌표수신] Lat: ${payload.lat}, Lng: ${payload.lng}")
         val myLoc =
             if (store.mode.value == RadarMode.GPS_ON)
                 locationProvider.getCurrentLocation()
             else null
+        Log.d("ResQLink_Distance", "📍 내 위치: $myLoc, 상대 위치: $payloadLoc, 모드: ${store.mode.value}")
 
-        val originId = extractOriginId(envelope)
 
-        // ✅ 기존 Radar 로직 (유지)
         store.onIncomingSos(
             originId = originId,
             msgId = envelope.msgId,
@@ -60,7 +62,7 @@ class ApplyIncomingSosUsecase(
             myLocation = myLoc
         )
 
-        // ✅ Inbox / UI 용 이벤트 방출
+        // Inbox / UI 용 이벤트 방출
         _incomingSosEvents.tryEmit(
             IncomingSosEvent(
                 originId = originId,
@@ -72,7 +74,8 @@ class ApplyIncomingSosUsecase(
                 payloadLocation = payloadLoc,
                 rssiDbm = rssiDbm,
                 timestampMs = envelope.timestampMs,
-                hops = envelope.hops
+                hops = envelope.hops,
+                myLocation = myLoc
             )
         )
     }

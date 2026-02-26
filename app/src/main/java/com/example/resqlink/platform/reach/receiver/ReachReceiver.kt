@@ -1,5 +1,6 @@
 package com.example.resqlink.platform.reach.receiver
 
+import android.util.Log
 import com.example.resqlink.domain.gateway.Transport
 import com.example.resqlink.domain.usecase.radar.ApplyIncomingSosUsecase
 import com.example.resqlink.platform.reach.dedup.DedupStore
@@ -19,35 +20,52 @@ class ReachReceiver(
 ) : TransportCallbacks {
 
     override fun onPayloadReceived(fromEndpointId: String, bytes: ByteArray, rssi: Int?) {
-        val envelope = codec.decode(bytes)?: return
+        val env = codec.decode(bytes) ?: return
 
-        //  내 신호인지 확인 (내가 최초 송신자라면 처리하지 않음)
-        if (envelope.senderId == mySenderId) {
+        val msgId = env.msgId
+        val originId = env.hops.firstOrNull()?.from ?: env.senderId
+
+        // ✅ 내 origin(내가 최초 발신) 에코면: 처리/릴레이 모두 중단 (루프 방지 핵심)
+        if (originId == mySenderId) {
+            Log.d("ResQLink_Net", "[필터] 내 origin 에코. msgId=$msgId originId=$originId")
             return
         }
 
-        scope.launch {
-            applyIncomingSos(envelope = envelope, rssiDbm = rssi)
+        // ✅ Apply는 msgId당 1회만
+        val applyKey = "apply:$msgId"
+        if (!dedup.isDuplicate(applyKey)) {
+            dedup.mark(applyKey)
+            scope.launch {
+                applyIncomingSos(envelope = env, rssiDbm = rssi)
+            }
+        } else {
+            Log.d("ResQLink_Net", "[중복-apply] msgId=$msgId")
         }
 
-        if (envelope.ttl <= 0) return
+        // ✅ Relay는 msgId당 1회만
+        if (env.ttl <= 0) return
+        val relayKey = "relay:$msgId"
+        if (dedup.isDuplicate(relayKey)) {
+            Log.d("ResQLink_Net", "[중복-relay] msgId=$msgId")
+            return
+        }
+        dedup.mark(relayKey)
 
-        val currentTransport = transportProvider()
+        // (추가 루프 방지) hop에 내가 이미 등장하면 relay 스킵
+        if (env.hops.any { it.from == mySenderId || it.to == mySenderId }) return
 
-        val hop = HopSignal(
-            from = envelope.senderId,
-            to = mySenderId,
-            rssi = rssi,
-            timestampMs = System.currentTimeMillis()
-        )
-
-        val relayed = envelope.copy(
+        val relayed = env.copy(
             senderId = mySenderId,
-            ttl = envelope.ttl - 1,
-            hops = envelope.hops + hop
+            ttl = env.ttl - 1,
+            hops = env.hops + HopSignal(
+                from = env.senderId,
+                to = mySenderId,
+                rssi = rssi,
+                timestampMs = System.currentTimeMillis()
+            )
         )
 
-        currentTransport.broadcast(codec.encode(relayed))
+        transportProvider().broadcast(codec.encode(relayed))
     }
 
     override fun onEndpointFound(endpointId: String, endpointName: String?) {}
