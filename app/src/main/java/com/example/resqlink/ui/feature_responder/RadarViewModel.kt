@@ -57,7 +57,6 @@ class RadarViewModel(
 
     /** 화면 진입 시 호출(Compose에서 DisposableEffect로 호출 추천) */
     fun onEnterScreen() {
-        reachControl.startReachMode()
         // GPS 모드라면 위치 폴링 시작
         if (store.mode.value == RadarMode.GPS_ON) startGpsPolling()
     }
