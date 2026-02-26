@@ -5,7 +5,7 @@ data class SosComposeUiState(
     val situation: SosSituationUi? = null,
     val peopleCount: Int = 1,
     val hint: String = "",
-    val includeLocation: Boolean = true,
+    val includeLocation: Boolean = false,
     val sending: Boolean = false
 ) {
     val canSend: Boolean
