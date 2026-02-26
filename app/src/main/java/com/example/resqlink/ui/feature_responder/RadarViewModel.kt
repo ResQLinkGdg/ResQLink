@@ -57,6 +57,7 @@ class RadarViewModel(
 
     /** 화면 진입 시 호출(Compose에서 DisposableEffect로 호출 추천) */
     fun onEnterScreen() {
+        reachControl.startReachMode()
         // GPS 모드라면 위치 폴링 시작
         if (store.mode.value == RadarMode.GPS_ON) startGpsPolling()
     }
@@ -64,8 +65,8 @@ class RadarViewModel(
     /** 화면 이탈 시 호출 */
     fun onExitScreen() {
         stopGpsPolling()
-        // “화면 나가면 종료” 정책일 때만!
-        reachControl.stopReachMode()
+        // 통신 엔진은 전역 재난모드 스위치(SOS 화면)에서만 제어한다.
+        // Radar 화면 이탈 시 종료하면 스위치 ON 상태와 실제 엔진 상태가 어긋난다.
     }
 
     fun onToggleGps(enabled: Boolean) {
