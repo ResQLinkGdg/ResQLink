@@ -24,6 +24,7 @@ import com.example.resqlink.domain.usecase.radar.RefreshMyLocationUsecase
 import com.example.resqlink.domain.usecase.radar.SetRadarModeUsecase
 import com.example.resqlink.domain.usecase.reach.ReachControlUseCase
 import com.example.resqlink.platform.location.AndroidLocationProvider
+import com.example.resqlink.platform.logging.FileRssiDistanceLogger
 import com.example.resqlink.platform.reach.dedup.InMemoryDedupStore
 import com.example.resqlink.platform.reach.protocol.MessageCodec
 import com.example.resqlink.platform.reach.receiver.ReachReceiver
@@ -209,10 +210,12 @@ class MainActivity : ComponentActivity() {
         val locationProvider = AndroidLocationProvider(this)
         val store = InMemoryRadarStateStore()
 
+        val rssiLogger = FileRssiDistanceLogger(this)
         val applyIncomingSos = ApplyIncomingSosUsecase(
             store = store,
             locationProvider = locationProvider,
-            mySenderId = mySenderId
+            mySenderId = mySenderId,
+            rssiDistanceLogger = rssiLogger
         )
 
         val receiver = ReachReceiver(

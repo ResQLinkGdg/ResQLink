@@ -3,8 +3,8 @@ package com.example.resqlink.domain.usecase.radar
 import android.util.Log
 import com.example.resqlink.data.store.RadarStateStore
 import com.example.resqlink.domain.gateway.GeoLocation
+import com.example.resqlink.domain.gateway.RssiDistanceLogger
 import com.example.resqlink.domain.gateway.LocationProvider
-import com.example.resqlink.domain.model.radar.RadarMode
 import com.example.resqlink.domain.model.sos.IncomingSosEvent
 import com.example.resqlink.platform.reach.protocol.MessageEnvelope
 import com.example.resqlink.platform.reach.protocol.MessageType
@@ -15,7 +15,8 @@ import kotlinx.coroutines.flow.SharedFlow
 class ApplyIncomingSosUsecase(
     private val store: RadarStateStore,
     private val locationProvider: LocationProvider,
-    private val mySenderId: String
+    private val mySenderId: String,
+    private val rssiDistanceLogger: RssiDistanceLogger? = null
 ) {
 
     private val _incomingSosEvents =
@@ -47,12 +48,24 @@ class ApplyIncomingSosUsecase(
                 GeoLocation(payload.lat, payload.lng)
             else null
         Log.d("ResQLink_Apply", "📍 [좌표수신] Lat: ${payload.lat}, Lng: ${payload.lng}")
-        val myLoc =
-            if (store.mode.value == RadarMode.GPS_ON)
-                locationProvider.getCurrentLocation()
-            else null
+        // Radar 진입 여부와 무관하게, 내 위치 + payload 위치 있으면 GPS 거리 계산
+        val myLoc = locationProvider.getCurrentLocation() ?: store.getMyLocation()
         Log.d("ResQLink_Distance", "📍 내 위치: $myLoc, 상대 위치: $payloadLoc, 모드: ${store.mode.value}")
 
+        // GPS 둘 다 있으면 (실제거리, RSSI) 로깅 → 학습/검증 데이터 수집
+        if (payloadLoc != null && myLoc != null && rssiDbm != null) {
+            val results = FloatArray(1)
+            android.location.Location.distanceBetween(
+                myLoc.lat, myLoc.lng,
+                payloadLoc.lat, payloadLoc.lng,
+                results
+            )
+            rssiDistanceLogger?.log(
+                actualDistanceM = results[0].toDouble(),
+                rssiDbm = rssiDbm,
+                timestampMs = envelope.timestampMs
+            )
+        }
 
         store.onIncomingSos(
             originId = originId,
