@@ -34,6 +34,10 @@ android {
         }
     }
 
+    aaptOptions {
+        noCompress += listOf("tflite", "task")
+    }
+
     defaultConfig {
         applicationId = "com.example.resqlink"
         minSdk = 26

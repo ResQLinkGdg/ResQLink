@@ -27,10 +27,9 @@ import androidx.compose.ui.unit.dp
 
 @Composable
 fun RagScreen(viewModel: RagViewModel) {
-    val answer by viewModel.answer.collectAsState()
+    val messages by viewModel.messages.collectAsState()
     val isLoading by viewModel.isLoading.collectAsState()
 
-    // 입력창의 텍스트 상태
     var queryText by remember { mutableStateOf("") }
     val scrollState = rememberScrollState()
 
@@ -47,7 +46,6 @@ fun RagScreen(viewModel: RagViewModel) {
             modifier = Modifier.padding(bottom = 24.dp)
         )
 
-        // 질문 입력창
         OutlinedTextField(
             value = queryText,
             onValueChange = { queryText = it },
@@ -59,7 +57,6 @@ fun RagScreen(viewModel: RagViewModel) {
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 전송 버튼
         Button(
             onClick = {
                 if (queryText.isNotBlank()) {
@@ -67,22 +64,21 @@ fun RagScreen(viewModel: RagViewModel) {
                 }
             },
             modifier = Modifier.fillMaxWidth(),
-            enabled = !isLoading // 로딩 중엔 버튼 비활성화
+            enabled = !isLoading
         ) {
             Text(if (isLoading) "답변 생성 중..." else "질문하기")
         }
 
         Spacer(modifier = Modifier.height(24.dp))
 
-        // 로딩 인디케이터
         if (isLoading) {
             CircularProgressIndicator()
         }
 
         Spacer(modifier = Modifier.height(16.dp))
 
-        // 답변 출력 영역
-        if (answer.isNotEmpty()) {
+        val lastAiMessage = messages.lastOrNull { !it.isUser }
+        if (lastAiMessage != null) {
             Card(
                 modifier = Modifier.fillMaxWidth(),
                 colors = CardDefaults.cardColors(
@@ -97,7 +93,7 @@ fun RagScreen(viewModel: RagViewModel) {
                     )
                     Spacer(modifier = Modifier.height(8.dp))
                     Text(
-                        text = answer,
+                        text = lastAiMessage.content,
                         style = MaterialTheme.typography.bodyMedium
                     )
                 }
