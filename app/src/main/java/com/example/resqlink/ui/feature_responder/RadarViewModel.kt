@@ -39,7 +39,8 @@ class RadarViewModel(
                         bucket = target.bucket,
                         bearingDeg = target.bearingDeg,
                         displayRange = "약 ${target.approxRangeText}",
-                        lastSeenMs = target.lastSeenMs
+                        lastSeenMs = target.lastSeenMs,
+                        distanceM = target.distanceM
                     )
                 },
                 selectedKey = selectedKey
@@ -66,7 +67,7 @@ class RadarViewModel(
     fun onExitScreen() {
         stopGpsPolling()
         // “화면 나가면 종료” 정책일 때만!
-        reachControl.stopReachMode()
+        // reachControl.stopReachMode() // Radar 나가도 송수신 유지
     }
 
     fun onToggleGps(enabled: Boolean) {

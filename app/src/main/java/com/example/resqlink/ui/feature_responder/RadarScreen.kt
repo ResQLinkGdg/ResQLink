@@ -256,11 +256,20 @@ private fun RadarCircleChart(
     val unknown = remember(signals) { signals.filter { it.bucket == com.example.resqlink.domain.model.Range.RangeBucket.UNKNOWN } }
 
     // 배치: bearing 있으면 각도대로, 없으면 “원형에서 임의 각도(고정)”로
-    fun radiusFor(bucket: com.example.resqlink.domain.model.Range.RangeBucket): Float = when (bucket) {
-        com.example.resqlink.domain.model.Range.RangeBucket.NEAR -> nearR
-        com.example.resqlink.domain.model.Range.RangeBucket.MID -> midR
-        com.example.resqlink.domain.model.Range.RangeBucket.FAR -> farR
-        com.example.resqlink.domain.model.Range.RangeBucket.UNKNOWN -> farR
+    val maxDistanceM = 200f
+    fun radiusFor(signal: RadarSignalUi): Float {
+        val distanceM = signal.distanceM
+        return if (distanceM != null && distanceM > 0) {
+            val fraction = (distanceM.toFloat() / maxDistanceM).coerceIn(0f, 1f)
+            fraction * farR  // 0m=center, 200m=farR (가까울수록 줌)
+        } else {
+            when (signal.bucket) {
+                com.example.resqlink.domain.model.Range.RangeBucket.NEAR -> nearR
+                com.example.resqlink.domain.model.Range.RangeBucket.MID -> midR
+                com.example.resqlink.domain.model.Range.RangeBucket.FAR -> farR
+                com.example.resqlink.domain.model.Range.RangeBucket.UNKNOWN -> farR
+            }
+        }
     }
 
     Box(Modifier.fillMaxSize()) {
@@ -291,9 +300,9 @@ private fun RadarCircleChart(
         val dotSize = 14.dp
         val dotPx = with(density) { dotSize.toPx() }
 
-        // known: bearing 있으면 그 각도, 없으면 key 기반 각도
+        // known: bearing 있으면 그 각도, 없으면 key 기반 각도. distanceM 있으면 실제 거리 비례 반지름
         known.forEach { s ->
-            val r = radiusFor(s.bucket)
+            val r = radiusFor(s)
             val angle = (s.bearingDeg ?: stableAngleDeg(s.key)).toRadians()
             val x = cx + (r * cos(angle)).toFloat()
             val y = cy - (r * sin(angle)).toFloat()

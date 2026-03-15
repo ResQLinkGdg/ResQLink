@@ -29,7 +29,7 @@ class InMemoryRadarStateStore(
 ): RadarStateStore {
     private val estimator = RssiRangeEstimator(rssiCfg)
 
-    private val _mode = MutableStateFlow(RadarMode.GPS_OFF)
+    private val _mode = MutableStateFlow(RadarMode.GPS_ON)
     override val mode: StateFlow<RadarMode> = _mode.asStateFlow()
 
     private val _targets = MutableStateFlow<List<RadarTarget>>(emptyList())
@@ -51,6 +51,8 @@ class InMemoryRadarStateStore(
     private val lock = Any()
     private val byOrigin = linkedMapOf<String, Entry>()
     private var myLoc: GeoLocation? = null
+
+    override fun getMyLocation(): GeoLocation? = myLoc
 
     override fun setMode(mode: RadarMode) {
         _mode.value = mode

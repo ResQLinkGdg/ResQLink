@@ -6,9 +6,12 @@ import android.content.pm.PackageManager
 import androidx.core.content.ContextCompat
 import com.example.resqlink.domain.gateway.GeoLocation
 import com.example.resqlink.domain.gateway.LocationProvider
+import com.google.android.gms.location.Priority
 import com.google.android.gms.location.LocationServices
-import kotlinx.coroutines.suspendCancellableCoroutine
+import com.google.android.gms.tasks.CancellationTokenSource
+import kotlin.coroutines.Continuation
 import kotlin.coroutines.resume
+import kotlinx.coroutines.suspendCancellableCoroutine
 
 class AndroidLocationProvider(
     private val context: Context
@@ -27,9 +30,15 @@ class AndroidLocationProvider(
 
         if (!hasPermission) return null
 
-        // 2️⃣ 마지막 위치 가져오기 (빠르고 안정적)
         return suspendCancellableCoroutine { cont ->
-            client.lastLocation
+            val cts = CancellationTokenSource()
+            cont.invokeOnCancellation { cts.cancel() }
+
+            // 2️⃣ getCurrentLocation: 캐시 없어도 새 위치 요청 (최대 ~15초 대기)
+            client.getCurrentLocation(
+                Priority.PRIORITY_BALANCED_POWER_ACCURACY,
+                cts.token
+            )
                 .addOnSuccessListener { location ->
                     if (location != null) {
                         cont.resume(
@@ -39,12 +48,32 @@ class AndroidLocationProvider(
                             )
                         )
                     } else {
-                        cont.resume(null)
+                        // 3️⃣ null이면 lastLocation 캐시 폴백
+                        tryLastLocation(cont)
                     }
                 }
                 .addOnFailureListener {
-                    cont.resume(null)
+                    tryLastLocation(cont)
                 }
         }
+    }
+
+    private fun tryLastLocation(cont: Continuation<GeoLocation?>) {
+        client.lastLocation
+            .addOnSuccessListener { location ->
+                if (location != null) {
+                    cont.resume(
+                        GeoLocation(
+                            lat = location.latitude,
+                            lng = location.longitude
+                        )
+                    )
+                } else {
+                    cont.resume(null)
+                }
+            }
+            .addOnFailureListener {
+                cont.resume(null)
+            }
     }
 }
