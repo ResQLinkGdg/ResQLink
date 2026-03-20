@@ -31,12 +31,7 @@ class RetrievalManager(
         }
 
         // 3. 상위 K개 추출
-//        val topIndices = scores.sortedByDescending { it.second }.take(topK)
-        // RetrieverManager.kt 내 상위 K개 추출 로직 수정
-        val threshold = 0.75f // 적절한 값으로 테스트 후 조정
-        val topIndices = scores.filter { it.second >= threshold }
-            .sortedByDescending { it.second }
-            .take(topK)
+        val topIndices = scores.sortedByDescending { it.second }.take(topK)
 
         return topIndices.map { (index, score) ->
             Log.d("RetrievalManager", "Found: idx=$index, score=$score, title=${dataPackLoader.chunks[index].docTitle}")
