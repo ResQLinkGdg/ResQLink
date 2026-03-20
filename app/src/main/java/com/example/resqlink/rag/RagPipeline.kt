@@ -9,13 +9,16 @@ class RagPipeline(
     private val retrievalManager: RetrievalManager
 ) {
     suspend fun generateResponse(userQuery: String): String {
+        // 1. 검색 (Retrieve)
         val relevantDocs = retrievalManager.retrieve(userQuery)
-        if (relevantDocs.isEmpty()) return "제공된 매뉴얼에 해당 내용이 없습니다."
 
+        // 2. 프롬프트 구성 (Augment)
         val prompt = buildPrompt(userQuery, relevantDocs)
+
+        // 3. 답변 생성 (Generate)
         val rawResponse = inferenceModel.generateResponse(prompt) ?: "답변을 생성하지 못했습니다."
 
-        // 생성된 답변 필터링 적용
+        // 4. 생성된 답변 필터링 적용
         return cleanRepetitiveText(rawResponse)
     }
 
@@ -46,8 +49,7 @@ class RagPipeline(
 
         return """
             당신은 재난 안전 및 응급 처치 전문가입니다.
-            아래 제공된 [참고 자료]만을 바탕으로 사용자의 [질문]에 대해 정확하고 이해하기 쉽게 답변하세요.
-            [참고 자료]에 없는 내용은 지어내지 말고 "제공된 매뉴얼에 해당 내용이 없습니다"라고 말하세요.
+            아래 제공된 [참고 자료]를 바탕으로 사용자의 [질문]에 대해 정확하고 이해하기 쉽게 답변하세요.
 
             [참고 자료]
             $contextText
