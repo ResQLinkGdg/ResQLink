@@ -6,5 +6,6 @@ data class GuideChatMessage(
     val id: String = UUID.randomUUID().toString(),
     val content: String,
     val isUser: Boolean,
-    val timestamp: Long = System.currentTimeMillis()
+    val timestamp: Long = System.currentTimeMillis(),
+    val structuredAnswer: StructuredGuideAnswer? = null
 )

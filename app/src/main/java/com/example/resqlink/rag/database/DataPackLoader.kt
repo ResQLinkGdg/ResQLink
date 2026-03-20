@@ -34,21 +34,20 @@ class DataPackLoader(private val context: Context) {
             val count = meta.count
 
             // 2. 텍스트 청크 로드 (chunks.jsonl)
-            val chunkList = mutableListOf<RagChunk>()
+            val allChunks = mutableListOf<RagChunk>()
             context.assets.open("chunks.jsonl").use { inputStream ->
                 BufferedReader(InputStreamReader(inputStream)).forEachLine { line ->
                     if (line.isNotBlank()) {
                         try {
                             val chunk = Json { ignoreUnknownKeys = true }.decodeFromString<RagChunk>(line)
-                            chunkList.add(chunk)
+                            allChunks.add(chunk)
                         } catch (e: Exception) {
                             Log.w(TAG, "Chunk parsing error: ${e.message}")
                         }
                     }
                 }
             }
-            chunks = chunkList
-            Log.d(TAG, "청크 로드 완료: ${chunks.size}개")
+            Log.d(TAG, "청크 파싱 완료: ${allChunks.size}개")
 
             // 3. 임베딩 벡터 로드 (embeddings.f16.bin)
             // f16(2byte) * dim * count 크기
@@ -57,19 +56,27 @@ class DataPackLoader(private val context: Context) {
             context.assets.open("embeddings.f16.bin").use { it.read(byteArray) }
 
             val buffer = ByteBuffer.wrap(byteArray).order(ByteOrder.LITTLE_ENDIAN)
-            val loadedEmbeddings = Array(count) { FloatArray(dim) }
+            val allEmbeddings = Array(count) { FloatArray(dim) }
 
             for (i in 0 until count) {
                 for (j in 0 until dim) {
-                    // Float16 to Float32 변환 (Android API 26+ Half, 혹은 수동 변환)
-                    // 여기서는 간단히 Short로 읽어서 변환한다고 가정하거나,
-                    // API 레벨에 따라 android.util.Half.toFloat(short) 사용
                     val halfFloat = buffer.short
-                    loadedEmbeddings[i][j] = android.util.Half.toFloat(halfFloat)
+                    allEmbeddings[i][j] = android.util.Half.toFloat(halfFloat)
                 }
             }
-            embeddings = loadedEmbeddings
             Log.d(TAG, "임베딩 로드 완료. 차원: $dim")
+
+            // 4. OCR 깨진 청크 필터링: (cid:숫자) 패턴이 내용의 50% 이상인 청크 제거
+            val cidPattern = Regex("""\(cid:\d+\)""")
+            val validIndices = allChunks.indices.filter { i ->
+                val content = allChunks[i].content
+                val cidMatches = cidPattern.findAll(content).sumOf { it.value.length }
+                cidMatches < content.length * 0.5
+            }
+            chunks = validIndices.map { allChunks[it] }
+            embeddings = validIndices.map { allEmbeddings[it] }.toTypedArray()
+            val filtered = allChunks.size - chunks.size
+            Log.d(TAG, "청크 필터링 완료: ${chunks.size}개 유효 ($filtered 개 OCR 깨짐 제거)")
 
             isLoaded = true
         } catch (e: Exception) {

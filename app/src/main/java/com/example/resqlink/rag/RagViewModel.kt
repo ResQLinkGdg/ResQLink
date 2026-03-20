@@ -78,8 +78,13 @@ class RagViewModel(
             _isLoading.value = true
 
             try {
-                val response = ragPipeline.generateResponse(query)
-                val aiMessage = GuideChatMessage(content = response, isUser = false)
+                val ragResponse = ragPipeline.generateResponse(query)
+                val parsed = parseGuideAnswer(ragResponse.rawText, ragResponse.sourceTitles)
+                val aiMessage = GuideChatMessage(
+                    content = ragResponse.rawText,
+                    isUser = false,
+                    structuredAnswer = parsed
+                )
                 _messages.value = _messages.value + aiMessage
             } catch (e: Exception) {
                 val errorMessage = GuideChatMessage(

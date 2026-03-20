@@ -11,7 +11,7 @@ class RetrievalManager(
     private val embeddingHelper: EmbeddingHelper
 ) {
 
-    suspend fun retrieve(query: String, topK: Int = 3): List<RagChunk> {
+    suspend fun retrieve(query: String, topK: Int = 5): List<RagChunk> {
         if (!dataPackLoader.isLoaded) {
             Log.w("RetrievalManager", "데이터팩이 로드되지 않았습니다.")
             return emptyList()
@@ -30,13 +30,33 @@ class RetrievalManager(
             scores.add(i to score)
         }
 
-        // 3. 상위 K개 추출
-        val topIndices = scores.sortedByDescending { it.second }.take(topK)
+        // 3. 넓은 후보 풀에서 인접 청크 중복 제거 후 상위 K개 추출
+        val candidates = scores
+            .filter { it.second >= 0.3f }
+            .sortedByDescending { it.second }
+            .take(topK * 3)
 
-        return topIndices.map { (index, score) ->
+        val selected = mutableListOf<Pair<Int, Float>>()
+        for (candidate in candidates) {
+            if (selected.size >= topK) break
+            val chunk = dataPackLoader.chunks[candidate.first]
+            val isDuplicate = selected.any { (idx, _) ->
+                val sel = dataPackLoader.chunks[idx]
+                sel.docId == chunk.docId && areAdjacentChunks(sel.chunkId, chunk.chunkId)
+            }
+            if (!isDuplicate) selected.add(candidate)
+        }
+
+        return selected.map { (index, score) ->
             Log.d("RetrievalManager", "Found: idx=$index, score=$score, title=${dataPackLoader.chunks[index].docTitle}")
             dataPackLoader.chunks[index]
         }
+    }
+
+    private fun areAdjacentChunks(id1: String, id2: String): Boolean {
+        val n1 = id1.substringAfterLast("_c").toIntOrNull() ?: return false
+        val n2 = id2.substringAfterLast("_c").toIntOrNull() ?: return false
+        return kotlin.math.abs(n1 - n2) <= 1
     }
 
     private fun cosineSimilarity(v1: FloatArray, v2: FloatArray): Float {

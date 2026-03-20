@@ -3,6 +3,7 @@ package com.example.resqlink.rag.generation
 import android.content.Context
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -36,7 +37,7 @@ class InferenceModel(private val context: Context) {
 
             val options = LlmInference.LlmInferenceOptions.builder()
                 .setModelPath(modelFile.absolutePath)
-                .setMaxTokens(1024)
+                .setMaxTokens(2048)
                 .build()
 
             llmInference = LlmInference.createFromOptions(context, options)
@@ -52,17 +53,26 @@ class InferenceModel(private val context: Context) {
 
     suspend fun generateResponse(prompt: String): String? = withContext(Dispatchers.IO) {
         try {
-            if (llmInference == null) {
+            val engine = llmInference
+            if (engine == null) {
                 return@withContext "모델이 아직 초기화되지 않았습니다. 잠시만 기다려주세요."
             }
 
-            val formattedPrompt = """
-                <start_of_turn>user
-                $prompt<end_of_turn>
-                <start_of_turn>model
-            """.trimIndent()
+            val sessionOptions = LlmInferenceSession.LlmInferenceSessionOptions.builder()
+                .setTemperature(0.1f)
+                .setTopK(20)
+                .build()
 
-            llmInference?.generateResponse(formattedPrompt) ?: "답변 생성 실패"
+            val session = LlmInferenceSession.createFromOptions(engine, sessionOptions)
+
+            val formattedPrompt = buildString {
+                append("<start_of_turn>user\n")
+                append(prompt)
+                append("<end_of_turn>\n<start_of_turn>model\n")
+            }
+
+            session.addQueryChunk(formattedPrompt)
+            session.generateResponse() ?: "답변 생성 실패"
         } catch (e: Exception) {
             Log.e("InferenceModel", "추론 중 에러 발생", e)
             "에러 발생: ${e.message}"

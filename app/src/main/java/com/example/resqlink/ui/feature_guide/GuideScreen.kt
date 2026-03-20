@@ -20,9 +20,12 @@ import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.geometry.Offset
 import com.example.resqlink.rag.GuideChatMessage
 import com.example.resqlink.rag.ManualState
 import com.example.resqlink.rag.RagViewModel
+import com.example.resqlink.rag.StructuredGuideAnswer
 
 @Composable
 fun GuideScreen(viewModel: RagViewModel, onSosClick: () -> Unit) {
@@ -412,27 +415,184 @@ private fun ChatBubble(message: GuideChatMessage) {
         modifier = Modifier.fillMaxWidth(),
         horizontalArrangement = if (message.isUser) Arrangement.End else Arrangement.Start
     ) {
-        Box(
-            modifier = Modifier
-                .widthIn(max = 280.dp)
-                .clip(
-                    if (message.isUser)
-                        RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp)
-                    else
-                        RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp)
+        if (message.isUser) {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .clip(RoundedCornerShape(16.dp, 4.dp, 16.dp, 16.dp))
+                    .background(Color(0xFFE8E8E8))
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = message.content,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp,
+                    color = Color(0xFF212121)
                 )
-                .background(
-                    if (message.isUser) Color(0xFFE8E8E8) else Color(0xFFF5F5F5)
+            }
+        } else if (message.structuredAnswer != null) {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 320.dp)
+                    .clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                    .background(Color(0xFFF5F5F5))
+                    .padding(12.dp)
+            ) {
+                StructuredGuideCard(answer = message.structuredAnswer)
+            }
+        } else {
+            Box(
+                modifier = Modifier
+                    .widthIn(max = 280.dp)
+                    .clip(RoundedCornerShape(4.dp, 16.dp, 16.dp, 16.dp))
+                    .background(Color(0xFFF5F5F5))
+                    .padding(12.dp)
+            ) {
+                Text(
+                    text = message.content,
+                    fontSize = 15.sp,
+                    lineHeight = 22.sp,
+                    color = Color(0xFF212121)
                 )
-                .padding(12.dp)
-        ) {
+            }
+        }
+    }
+}
+
+@Composable
+private fun StructuredGuideCard(answer: StructuredGuideAnswer) {
+    Column(verticalArrangement = Arrangement.spacedBy(10.dp)) {
+        // Title
+        Text(
+            text = answer.title,
+            fontWeight = FontWeight.Bold,
+            fontSize = 16.sp,
+            color = Color(0xFF212121)
+        )
+
+        // Summary
+        if (answer.summary.isNotEmpty()) {
             Text(
-                text = message.content,
-                fontSize = 15.sp,
-                lineHeight = 22.sp,
-                color = Color(0xFF212121)
+                text = answer.summary,
+                fontSize = 14.sp,
+                lineHeight = 20.sp,
+                color = Color(0xFF424242)
             )
         }
+
+        // Key Actions
+        if (answer.key_actions.isNotEmpty()) {
+            SectionBox(
+                backgroundColor = Color(0xFFE8F5E9),
+                barColor = Color(0xFF4CAF50),
+                title = "핵심 행동요령",
+                titleColor = Color(0xFF2E7D32)
+            ) {
+                answer.key_actions.forEachIndexed { index, action ->
+                    Text(
+                        text = "${index + 1}. $action",
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        color = Color(0xFF212121)
+                    )
+                }
+            }
+        }
+
+        // Detail Steps
+        if (answer.detail_steps.isNotEmpty()) {
+            SectionBox(
+                backgroundColor = Color(0xFFF5F5F5),
+                barColor = Color(0xFF9E9E9E),
+                title = "상세 단계",
+                titleColor = Color(0xFF616161)
+            ) {
+                answer.detail_steps.forEach { step ->
+                    Text(
+                        text = "\u2022 $step",
+                        fontSize = 14.sp,
+                        lineHeight = 20.sp,
+                        color = Color(0xFF212121)
+                    )
+                }
+            }
+        }
+
+        // Warning
+        if (answer.warning.isNotEmpty()) {
+            val warningBarColor = Color(0xFFFFA000)
+            Row(
+                modifier = Modifier
+                    .fillMaxWidth()
+                    .clip(RoundedCornerShape(8.dp))
+                    .background(Color(0xFFFFF8E1))
+                    .drawBehind {
+                        drawRect(
+                            color = warningBarColor,
+                            topLeft = Offset.Zero,
+                            size = size.copy(width = 4.dp.toPx())
+                        )
+                    }
+                    .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+                verticalAlignment = Alignment.CenterVertically
+            ) {
+                Icon(
+                    imageVector = Icons.Default.Warning,
+                    contentDescription = null,
+                    tint = Color(0xFFFFA000),
+                    modifier = Modifier.size(16.dp)
+                )
+                Spacer(modifier = Modifier.width(6.dp))
+                Text(
+                    text = answer.warning,
+                    fontSize = 13.sp,
+                    lineHeight = 18.sp,
+                    color = Color(0xFFE65100)
+                )
+            }
+        }
+
+        // Sources
+        if (answer.source_titles.isNotEmpty()) {
+            Text(
+                text = answer.source_titles.joinToString(" \u00B7 "),
+                fontSize = 12.sp,
+                color = Color(0xFF9E9E9E)
+            )
+        }
+    }
+}
+
+@Composable
+private fun SectionBox(
+    backgroundColor: Color,
+    barColor: Color,
+    title: String,
+    titleColor: Color,
+    content: @Composable ColumnScope.() -> Unit
+) {
+    Column(
+        modifier = Modifier
+            .fillMaxWidth()
+            .clip(RoundedCornerShape(8.dp))
+            .background(backgroundColor)
+            .drawBehind {
+                drawRect(
+                    color = barColor,
+                    topLeft = Offset.Zero,
+                    size = size.copy(width = 4.dp.toPx())
+                )
+            }
+            .padding(start = 12.dp, end = 8.dp, top = 8.dp, bottom = 8.dp),
+        verticalArrangement = Arrangement.spacedBy(4.dp)
+    ) {
+        Text(
+            text = title,
+            fontWeight = FontWeight.SemiBold,
+            fontSize = 13.sp,
+            color = titleColor
+        )
+        content()
     }
 }
 
