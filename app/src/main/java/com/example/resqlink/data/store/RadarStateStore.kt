@@ -15,19 +15,17 @@ interface RadarStateStore {
 
     fun setMode(mode: RadarMode)
 
+    /** GPS 폴링으로 저장된 내 위치. getCurrentLocation() 실패 시 폴백용 */
+    fun getMyLocation(): GeoLocation?
+
     fun onIncomingSos(
         originId: String,
         msgId: String,
         rssiDbm: Int?,
         payloadLocation: GeoLocation?,  // SOS payload lat/lng
         myLocation: GeoLocation?        // GPS ON일 때만 필요
-<<<<<<< HEAD
-    ){
 
-    }
-=======
     )
->>>>>>> c3c7fa588f6255b2cb07249899b5fd067c0b13e4
 
     fun onMyLocationUpdated(myLocation: GeoLocation)
 

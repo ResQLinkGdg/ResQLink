@@ -1,10 +1,10 @@
 package com.example.resqlink.domain.usecase.radar
 
+import android.util.Log
 import com.example.resqlink.data.store.RadarStateStore
 import com.example.resqlink.domain.gateway.GeoLocation
+import com.example.resqlink.domain.gateway.RssiDistanceLogger
 import com.example.resqlink.domain.gateway.LocationProvider
-import com.example.resqlink.domain.model.radar.RadarMode
-<<<<<<< HEAD
 import com.example.resqlink.domain.model.sos.IncomingSosEvent
 import com.example.resqlink.platform.reach.protocol.MessageEnvelope
 import com.example.resqlink.platform.reach.protocol.MessageType
@@ -15,7 +15,8 @@ import kotlinx.coroutines.flow.SharedFlow
 class ApplyIncomingSosUsecase(
     private val store: RadarStateStore,
     private val locationProvider: LocationProvider,
-    private val mySenderId: String
+    private val mySenderId: String,
+    private val rssiDistanceLogger: RssiDistanceLogger? = null
 ) {
 
     private val _incomingSosEvents =
@@ -32,9 +33,11 @@ class ApplyIncomingSosUsecase(
     ) {
         if (envelope.type != MessageType.SOS) return
 
-        val senderId= extractOriginId(envelope)
-        //  필터링 추가: 이 메시지를 처음 만든 사람이 '나'라면 레이더에 표시하지 않음
-        if (senderId == mySenderId) {
+        val originId = extractOriginId(envelope)
+        Log.d("ResQLink_Apply", "[가공] OriginId: $originId, MsgId: ${envelope.msgId}")
+
+        if (originId == mySenderId) {
+            Log.d("ResQLink_Apply", "[필터] 내가 최초 발신한 SOS입니다.")
             return
         }
 
@@ -44,37 +47,26 @@ class ApplyIncomingSosUsecase(
             if (payload.lat != null && payload.lng != null)
                 GeoLocation(payload.lat, payload.lng)
             else null
+        Log.d("ResQLink_Apply", "📍 [좌표수신] Lat: ${payload.lat}, Lng: ${payload.lng}")
+        // Radar 진입 여부와 무관하게, 내 위치 + payload 위치 있으면 GPS 거리 계산
+        val myLoc = locationProvider.getCurrentLocation() ?: store.getMyLocation()
+        Log.d("ResQLink_Distance", "📍 내 위치: $myLoc, 상대 위치: $payloadLoc, 모드: ${store.mode.value}")
 
-        val myLoc =
-            if (store.mode.value == RadarMode.GPS_ON)
-                locationProvider.getCurrentLocation()
-=======
-import com.example.resqlink.platform.reach.protocol.MessageEnvelope
-import com.example.resqlink.platform.reach.protocol.MessageType
-import com.example.resqlink.platform.reach.protocol.SosPayload
+        // GPS 둘 다 있으면 (실제거리, RSSI) 로깅 → 학습/검증 데이터 수집
+        if (payloadLoc != null && myLoc != null && rssiDbm != null) {
+            val results = FloatArray(1)
+            android.location.Location.distanceBetween(
+                myLoc.lat, myLoc.lng,
+                payloadLoc.lat, payloadLoc.lng,
+                results
+            )
+            rssiDistanceLogger?.log(
+                actualDistanceM = results[0].toDouble(),
+                rssiDbm = rssiDbm,
+                timestampMs = envelope.timestampMs
+            )
+        }
 
-class ApplyIncomingSosUsecase(
-    private val store: RadarStateStore,
-    private val locationProvider: LocationProvider
-) {
-    suspend operator fun invoke(envelope: MessageEnvelope, rssiDbm: Int?) {
-        if (envelope.type != MessageType.SOS) return
-
-        val payload = envelope.payload as? SosPayload ?: return
-        val payloadLoc: GeoLocation? =
-            if (payload.lat != null && payload.lng != null) GeoLocation(payload.lat, payload.lng) else null
-
-        val myLoc: GeoLocation? =
-            if (store.mode.value == RadarMode.GPS_ON) locationProvider.getCurrentLocation()
->>>>>>> c3c7fa588f6255b2cb07249899b5fd067c0b13e4
-            else null
-
-        val originId = extractOriginId(envelope)
-
-<<<<<<< HEAD
-        // ✅ 기존 Radar 로직 (유지)
-=======
->>>>>>> c3c7fa588f6255b2cb07249899b5fd067c0b13e4
         store.onIncomingSos(
             originId = originId,
             msgId = envelope.msgId,
@@ -82,9 +74,8 @@ class ApplyIncomingSosUsecase(
             payloadLocation = payloadLoc,
             myLocation = myLoc
         )
-<<<<<<< HEAD
 
-        // ✅ Inbox / UI 용 이벤트 방출
+        // Inbox / UI 용 이벤트 방출
         _incomingSosEvents.tryEmit(
             IncomingSosEvent(
                 originId = originId,
@@ -96,20 +87,12 @@ class ApplyIncomingSosUsecase(
                 payloadLocation = payloadLoc,
                 rssiDbm = rssiDbm,
                 timestampMs = envelope.timestampMs,
-                hops = envelope.hops
+                hops = envelope.hops,
+                myLocation = myLoc
             )
         )
     }
 
-=======
-    }
-
-    /**
-     * 너 코드 기준: relay가 senderId를 덮어쓰므로 origin은 hops에서 복원.
-     * - 원본 송신: hops 비어있음 -> senderId가 origin
-     * - 릴레이된 것: hops[0].from이 최초 origin
-     */
->>>>>>> c3c7fa588f6255b2cb07249899b5fd067c0b13e4
     private fun extractOriginId(envelope: MessageEnvelope): String {
         val firstHopFrom = envelope.hops.firstOrNull()?.from
         return firstHopFrom ?: envelope.senderId

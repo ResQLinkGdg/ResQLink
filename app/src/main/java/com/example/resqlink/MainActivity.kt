@@ -24,6 +24,7 @@ import com.example.resqlink.domain.usecase.radar.RefreshMyLocationUsecase
 import com.example.resqlink.domain.usecase.radar.SetRadarModeUsecase
 import com.example.resqlink.domain.usecase.reach.ReachControlUseCase
 import com.example.resqlink.platform.location.AndroidLocationProvider
+import com.example.resqlink.platform.logging.FileRssiDistanceLogger
 import com.example.resqlink.platform.reach.dedup.InMemoryDedupStore
 import com.example.resqlink.platform.reach.protocol.MessageCodec
 import com.example.resqlink.platform.reach.receiver.ReachReceiver
@@ -39,10 +40,13 @@ import com.example.resqlink.ui.feature_responder.RadarViewModelFactory
 import com.example.resqlink.ui.feature_sos.compose.SosComposeRoute
 import com.example.resqlink.ui.feature_sos.inbox.SosInboxRoute
 // RAG 관련 import 추가
+import com.example.resqlink.data.store.ManualInstallStore
+import com.example.resqlink.data.store.SearchHistoryStore
 import com.example.resqlink.rag.*
 import com.example.resqlink.rag.database.DataPackLoader
 import com.example.resqlink.rag.generation.InferenceModel
 import com.google.android.gms.nearby.connection.Strategy
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
 class MainActivity : ComponentActivity() {
@@ -188,8 +192,10 @@ class MainActivity : ComponentActivity() {
                         }
 
                         composable(AppRoute.Guide.route) {
-                            // 🟢 [수정] ViewModel 주입
-                            GuideScreen(viewModel = ragViewModel)
+                            GuideScreen(
+                                viewModel = ragViewModel,
+                                onSosClick = { navController.navigate(AppRoute.SosCompose.route) }
+                            )
                         }
 
                         composable(AppRoute.Settings.route) {
@@ -209,10 +215,12 @@ class MainActivity : ComponentActivity() {
         val locationProvider = AndroidLocationProvider(this)
         val store = InMemoryRadarStateStore()
 
+        val rssiLogger = FileRssiDistanceLogger(this)
         val applyIncomingSos = ApplyIncomingSosUsecase(
             store = store,
             locationProvider = locationProvider,
-            mySenderId = mySenderId
+            mySenderId = mySenderId,
+            rssiDistanceLogger = rssiLogger
         )
 
         val receiver = ReachReceiver(
@@ -255,15 +263,23 @@ class MainActivity : ComponentActivity() {
         val dataPackLoader = DataPackLoader(this)
         val retrievalManager = RetrievalManager(dataPackLoader, embeddingHelper)
         val ragPipeline = RagPipeline(inferenceModel, retrievalManager)
+        val searchHistoryStore = SearchHistoryStore(this)
+        val manualInstallStore = ManualInstallStore(this)
 
-        // ViewModel 생성
-        ragViewModel = RagViewModel(ragPipeline)
-
-        // 비동기 초기화 (모델 로딩 등 무거운 작업)
-        lifecycleScope.launch {
-            launch { inferenceModel.initialize() }
-            launch { embeddingHelper.initialize() }
-            launch { dataPackLoader.loadDataPack() }
-        }
+        ragViewModel = RagViewModel(
+            ragPipeline = ragPipeline,
+            searchHistoryStore = searchHistoryStore,
+            manualInstallStore = manualInstallStore,
+            initializer = { onProgress ->
+                coroutineScope {
+                    onProgress("데이터 로딩 중...")
+                    launch { inferenceModel.initialize() }
+                    launch { embeddingHelper.initialize() }
+                    launch { dataPackLoader.loadDataPack() }
+                }
+                if (inferenceModel.isReady) null
+                else inferenceModel.errorMessage ?: "알 수 없는 오류"
+            }
+        )
     }
 }

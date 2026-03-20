@@ -11,12 +11,14 @@ import androidx.compose.runtime.*
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.unit.dp
-import androidx.lifecycle.lifecycleScope
+import com.example.resqlink.data.store.ManualInstallStore
+import com.example.resqlink.data.store.SearchHistoryStore
 import com.example.resqlink.rag.database.DataPackLoader
 import com.example.resqlink.rag.generation.InferenceModel
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.launch
 
-class MainActivity : ComponentActivity() {
+class MainAcivity : ComponentActivity() {
 
     private lateinit var viewModel: RagViewModel
 
@@ -26,22 +28,28 @@ class MainActivity : ComponentActivity() {
         // 1. RAG 컴포넌트 초기화
         val dataPackLoader = DataPackLoader(this)
         val embeddingHelper = EmbeddingHelper(this)
-
-        // [변경] context(this)를 생성자에 전달합니다.
         val inferenceModel = InferenceModel(this)
-
-        // 2. 비동기 초기화 (데이터팩 로드 + 모델 로드)
-        lifecycleScope.launch {
-            // 동시에 로드하여 속도 향상
-            launch { dataPackLoader.loadDataPack() }
-            launch { embeddingHelper.initialize() }
-            launch { inferenceModel.initialize() } // [변경] LLM 모델 로드 호출
-        }
 
         // 파이프라인 조립
         val retrievalManager = RetrievalManager(dataPackLoader, embeddingHelper)
         val ragPipeline = RagPipeline(inferenceModel, retrievalManager)
-        viewModel = RagViewModel(ragPipeline)
+        val manualInstallStore = ManualInstallStore(this)
+
+        viewModel = RagViewModel(
+            ragPipeline = ragPipeline,
+            searchHistoryStore = SearchHistoryStore(this),
+            manualInstallStore = manualInstallStore,
+            initializer = { onProgress ->
+                coroutineScope {
+                    onProgress("데이터 로딩 중...")
+                    launch { inferenceModel.initialize() }
+                    launch { embeddingHelper.initialize() }
+                    launch { dataPackLoader.loadDataPack() }
+                }
+                if (inferenceModel.isReady) null
+                else inferenceModel.errorMessage ?: "알 수 없는 오류"
+            }
+        )
 
         // 화면 설정 (Compose)
         setContent {

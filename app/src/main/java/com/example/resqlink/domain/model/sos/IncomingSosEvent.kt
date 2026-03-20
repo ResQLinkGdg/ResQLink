@@ -18,7 +18,8 @@ data class IncomingSosEvent(
     val situation: SosSituation,   // 상황 유형
     val peopleCount: Int?,         // 인원 수 (optional)
     val hint: String?,             // 자유 설명
-    val payloadLocation: GeoLocation?, // 송신자가 포함한 위치
+    val payloadLocation: GeoLocation?,  //상대방 위치
+    val myLocation: GeoLocation?,// 내 위치
     val rssiDbm: Int?,             // 마지막 수신 RSSI
     val timestampMs: Long,         // 수신 시각
     val hops: List<HopSignal>      // hop 정보 (전파 경로)
