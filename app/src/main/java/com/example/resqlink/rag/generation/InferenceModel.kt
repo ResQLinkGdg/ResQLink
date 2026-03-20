@@ -3,6 +3,7 @@ package com.example.resqlink.rag.generation
 import android.content.Context
 import android.util.Log
 import com.google.mediapipe.tasks.genai.llminference.LlmInference
+import com.google.mediapipe.tasks.genai.llminference.LlmInferenceSession
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
 import java.io.File
@@ -62,7 +63,20 @@ class InferenceModel(private val context: Context) {
                 <start_of_turn>model
             """.trimIndent()
 
-            llmInference?.generateResponse(formattedPrompt) ?: "답변 생성 실패"
+            val sessionOptions = LlmInferenceSession.LlmInferenceSessionOptions.builder()
+                .setTemperature(0.4f) // 무한 루프 방지 (0.3 ~ 0.5 권장)
+                .setTopK(40)          // 이상한 단어 생성 방지
+                .build()
+
+            val session = LlmInferenceSession.createFromOptions(llmInference!!, sessionOptions)
+
+            session.addQueryChunk(formattedPrompt)
+
+            val response = session.generateResponse() ?: "답변 생성 실패"
+
+            session.close()
+
+            return@withContext response
         } catch (e: Exception) {
             Log.e("InferenceModel", "추론 중 에러 발생", e)
             "에러 발생: ${e.message}"
@@ -70,6 +84,7 @@ class InferenceModel(private val context: Context) {
     }
 
     fun close() {
+        llmInference?.close()
         llmInference = null
     }
 }
