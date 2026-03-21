@@ -6,6 +6,7 @@ import com.example.resqlink.data.store.ManualInstallStore
 import com.example.resqlink.data.store.SearchHistoryStore
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.asStateFlow
+import android.util.Log
 import kotlinx.coroutines.launch
 
 sealed interface ManualState {
@@ -79,6 +80,7 @@ class RagViewModel(
 
             try {
                 val ragResponse = ragPipeline.generateResponse(query)
+                Log.d("RagViewModel", "rawText: ${ragResponse.rawText}")
                 val parsed = parseGuideAnswer(ragResponse.rawText, ragResponse.sourceTitles)
                 val aiMessage = GuideChatMessage(
                     content = ragResponse.rawText,

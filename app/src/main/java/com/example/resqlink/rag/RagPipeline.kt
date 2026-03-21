@@ -20,8 +20,9 @@ class RagPipeline(
         // 2. 프롬프트 구성 (Augment)
         val prompt = buildPrompt(userQuery, relevantDocs)
 
-        // 3. 답변 생성 (Generate)
-        val rawText = inferenceModel.generateResponse(prompt) ?: "답변을 생성하지 못했습니다."
+        // 3. 답변 생성 (Generate) — prefill로 모델이 "제목:" 뒤부터 이어서 생성
+        val generatedText = inferenceModel.generateResponse(prompt, prefill = "제목:") ?: "답변을 생성하지 못했습니다."
+        val rawText = if (generatedText.trimStart().startsWith("제목:")) generatedText else "제목:$generatedText"
 
         val sourceTitles = relevantDocs.map { it.docTitle }.distinct()
 
@@ -29,8 +30,8 @@ class RagPipeline(
     }
 
     private fun buildPrompt(query: String, docs: List<RagChunk>): String {
-        val maxChunkLength = 400
-        val maxTotalContextChars = 1800
+        val maxChunkLength = 600
+        val maxTotalContextChars = 3000
 
         val contextText = if (docs.isEmpty()) {
             "관련 정보 없음"
@@ -53,21 +54,23 @@ class RagPipeline(
             // 역할 + 근거 기반 지시
             append("당신은 응급상황 가이드입니다. ")
             append("아래 참고자료만 사용하여 답하세요. ")
-            append("참고자료에 없는 내용은 답하지 마세요.\n\n")
+            append("참고자료에 없는 내용은 답하지 마세요. ")
+            append("행동요령을 빠짐없이 모두 나열하세요.\n\n")
             // 참고자료
             append(contextText)
             append("\n\n")
-            // 원샷 예시 (1B 모델에 필수)
+            // 원샷 예시 (1B 모델에 필수 — 행동 3개로 축소하여 토큰 절약)
             append("예시:\n")
-            append("제목: 화상 응급처치\n")
-            append("요약: 화상 부위를 즉시 흐르는 찬물로 식힌다.\n")
-            append("행동: 화상 부위를 흐르는 찬물에 10분 이상 식힌다\n")
-            append("행동: 깨끗한 거즈로 덮는다\n")
-            append("주의: 물집을 터뜨리지 않는다\n\n")
+            append("제목: 심폐소생술(CPR)\n")
+            append("요약: 의식과 호흡이 없는 환자에게 즉시 심폐소생술을 시행한다.\n")
+            append("행동: 환자의 반응을 확인하고 119에 신고한다\n")
+            append("행동: 가슴 중앙을 깍지 낀 손으로 30회 압박한다\n")
+            append("행동: 30회 압박과 2회 호흡을 구급대 도착까지 반복한다\n")
+            append("주의: 가슴 압박 깊이는 약 5cm, 속도는 분당 100~120회를 유지한다\n\n")
             // 질문
             append("질문: ")
             append(query)
-            append("\n\n위 형식대로 답하세요:\n")
+            append("\n\n위 형식(제목/요약/행동/주의)대로 답하세요.")
         }
     }
 

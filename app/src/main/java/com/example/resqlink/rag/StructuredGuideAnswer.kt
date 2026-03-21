@@ -59,7 +59,9 @@ private fun tryParseDelimited(
     text: String,
     fallbackSources: List<String>
 ): StructuredGuideAnswer? {
-    val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
+    val lines = text.lines()
+        .map { it.trim().replace("：", ":") }  // 전각 콜론 → 반각 콜론
+        .filter { it.isNotBlank() }
 
     var title = ""
     var summary = ""
@@ -68,13 +70,51 @@ private fun tryParseDelimited(
     var warning = ""
 
     var matched = false
+    var lastMatchedField = ""  // 직전에 매칭된 필드 이름 추적
+    val actionPrefixRegex = Regex("""^행동\s*\d*\s*[:]\s*""")
+    val numberedListRegex = Regex("""^\d+[.)]\s+(.+)""")
+    val bulletRegex = Regex("""^[-*•▶]\s+(.+)""")
+
+    // 동의어 접두사 매핑
+    val titlePrefixes = listOf("제목:", "주제:", "상황:")
+    val summaryPrefixes = listOf("요약:", "설명:", "개요:")
+    val actionPrefixes = listOf("행동:", "조치:", "대처:", "방법:", "대응:")
+    val warningPrefixes = listOf("주의:", "주의사항:", "경고:", "유의:")
+
     for (line in lines) {
         when {
-            line.startsWith("제목:") -> { title = line.removePrefix("제목:").trim(); matched = true }
-            line.startsWith("요약:") -> { summary = line.removePrefix("요약:").trim(); matched = true }
-            line.startsWith("행동:") -> { keyActions.add(line.removePrefix("행동:").trim()); matched = true }
-            line.startsWith("단계:") -> { detailSteps.add(line.removePrefix("단계:").trim()); matched = true }
-            line.startsWith("주의:") -> { warning = line.removePrefix("주의:").trim(); matched = true }
+            titlePrefixes.any { line.startsWith(it) } -> {
+                title = titlePrefixes.fold(line) { acc, prefix -> acc.removePrefix(prefix) }.trim()
+                matched = true; lastMatchedField = "제목"
+            }
+            summaryPrefixes.any { line.startsWith(it) } -> {
+                summary = summaryPrefixes.fold(line) { acc, prefix -> acc.removePrefix(prefix) }.trim()
+                matched = true; lastMatchedField = "요약"
+            }
+            actionPrefixes.any { line.startsWith(it) } || actionPrefixRegex.containsMatchIn(line) -> {
+                val content = actionPrefixes.fold(
+                    line.replace(actionPrefixRegex, "")
+                ) { acc, prefix -> acc.removePrefix(prefix) }.trim()
+                if (content.isNotBlank()) keyActions.add(content)
+                matched = true; lastMatchedField = "행동"
+            }
+            line.startsWith("단계:") -> {
+                detailSteps.add(line.removePrefix("단계:").trim())
+                matched = true; lastMatchedField = "단계"
+            }
+            warningPrefixes.any { line.startsWith(it) } -> {
+                warning = warningPrefixes.fold(line) { acc, prefix -> acc.removePrefix(prefix) }.trim()
+                matched = true; lastMatchedField = "주의"
+            }
+            lastMatchedField == "행동" && numberedListRegex.matches(line) -> {
+                val content = numberedListRegex.find(line)?.groupValues?.get(1)?.trim()
+                if (!content.isNullOrBlank()) keyActions.add(content)
+            }
+            lastMatchedField == "행동" && bulletRegex.matches(line) -> {
+                val content = bulletRegex.find(line)?.groupValues?.get(1)?.trim()
+                if (!content.isNullOrBlank()) keyActions.add(content)
+            }
+            else -> { /* lastMatchedField 유지 — 비매칭 줄이 있어도 컨텍스트 리셋하지 않음 */ }
         }
     }
 
@@ -83,8 +123,8 @@ private fun tryParseDelimited(
     return StructuredGuideAnswer(
         title = if (isPlaceholder(title)) "" else title.ifBlank { "안내" },
         summary = if (isPlaceholder(summary)) "" else summary,
-        key_actions = keyActions.filterNot { isPlaceholder(it) },
-        detail_steps = detailSteps.filterNot { isPlaceholder(it) },
+        key_actions = keyActions.filterNot { isPlaceholder(it) }.distinct().take(10),
+        detail_steps = detailSteps.filterNot { isPlaceholder(it) }.distinct(),
         warning = if (isPlaceholder(warning)) "" else warning,
         source_titles = fallbackSources
     )
@@ -95,13 +135,40 @@ private fun trySalvagePlainText(
     fallbackSources: List<String>
 ): StructuredGuideAnswer {
     val lines = text.lines().map { it.trim() }.filter { it.isNotBlank() }
+    val numberedRegex = Regex("""^\d+[.)]\s+(.+)""")
+    val bulletRegex = Regex("""^[-*•▶]\s+(.+)""")
+
     val title = lines.firstOrNull() ?: "안내"
-    val summary = if (lines.size > 1) lines.drop(1).joinToString(" ") else ""
+    val actions = mutableListOf<String>()
+    val otherLines = mutableListOf<String>()
+
+    for (line in lines.drop(1)) {
+        val numberedMatch = numberedRegex.find(line)
+        val bulletMatch = bulletRegex.find(line)
+        when {
+            numberedMatch != null -> actions.add(numberedMatch.groupValues[1].trim())
+            bulletMatch != null -> actions.add(bulletMatch.groupValues[1].trim())
+            else -> otherLines.add(line)
+        }
+    }
+
+    // 최종 fallback: 번호/bullet 목록이 없으면 문장 분리로 key_actions 생성
+    if (actions.isEmpty()) {
+        val allText = otherLines.joinToString(" ")
+        val sentences = allText.split(Regex("""[.。]\s*|\n"""))
+            .map { it.trim() }
+            .filter { it.length in 5..100 }
+            .take(5)
+        actions.addAll(sentences)
+        otherLines.clear()
+    }
+
+    val summary = otherLines.joinToString(" ")
 
     return StructuredGuideAnswer(
         title = title,
         summary = summary,
-        key_actions = emptyList(),
+        key_actions = actions.distinct().take(10),
         detail_steps = emptyList(),
         warning = "",
         source_titles = fallbackSources

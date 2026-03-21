@@ -51,7 +51,7 @@ class InferenceModel(private val context: Context) {
     }
 
 
-    suspend fun generateResponse(prompt: String): String? = withContext(Dispatchers.IO) {
+    suspend fun generateResponse(prompt: String, prefill: String = ""): String? = withContext(Dispatchers.IO) {
         try {
             val engine = llmInference
             if (engine == null) {
@@ -69,6 +69,7 @@ class InferenceModel(private val context: Context) {
                 append("<start_of_turn>user\n")
                 append(prompt)
                 append("<end_of_turn>\n<start_of_turn>model\n")
+                append(prefill)
             }
 
             session.addQueryChunk(formattedPrompt)

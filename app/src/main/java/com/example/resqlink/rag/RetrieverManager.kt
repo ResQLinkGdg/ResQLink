@@ -30,26 +30,93 @@ class RetrievalManager(
             scores.add(i to score)
         }
 
-        // 3. 넓은 후보 풀에서 인접 청크 중복 제거 후 상위 K개 추출
+        // 3. 넓은 후보 풀 확보 후 인접 청크 이웃 확장
         val candidates = scores
             .filter { it.second >= 0.3f }
             .sortedByDescending { it.second }
-            .take(topK * 3)
+            .take(topK * 4)
 
-        val selected = mutableListOf<Pair<Int, Float>>()
-        for (candidate in candidates) {
-            if (selected.size >= topK) break
-            val chunk = dataPackLoader.chunks[candidate.first]
-            val isDuplicate = selected.any { (idx, _) ->
-                val sel = dataPackLoader.chunks[idx]
-                sel.docId == chunk.docId && areAdjacentChunks(sel.chunkId, chunk.chunkId)
+        // 인접 이웃 청크도 후보에 추가
+        val expandedIndices = mutableSetOf<Int>()
+        for ((idx, _) in candidates) {
+            expandedIndices.add(idx)
+            val chunk = dataPackLoader.chunks[idx]
+            val chunkNum = chunk.chunkId.substringAfterLast("_c").toIntOrNull() ?: continue
+            // 앞뒤 청크 탐색
+            for (neighborNum in listOf(chunkNum - 1, chunkNum + 1)) {
+                if (neighborNum < 0) continue
+                val neighborId = chunk.chunkId.substringBeforeLast("_c") + "_c$neighborNum"
+                val neighborIdx = dataPackLoader.chunks.indexOfFirst {
+                    it.docId == chunk.docId && it.chunkId == neighborId
+                }
+                if (neighborIdx >= 0) expandedIndices.add(neighborIdx)
             }
-            if (!isDuplicate) selected.add(candidate)
         }
 
-        return selected.map { (index, score) ->
-            Log.d("RetrievalManager", "Found: idx=$index, score=$score, title=${dataPackLoader.chunks[index].docTitle}")
-            dataPackLoader.chunks[index]
+        // 확장된 후보를 점수순 정렬
+        val scoreMap = scores.associate { it.first to it.second }
+        val expandedCandidates = expandedIndices
+            .map { idx -> idx to (scoreMap[idx] ?: 0f) }
+            .sortedByDescending { it.second }
+
+        // 4. 인접 청크를 병합하여 상위 K개 그룹 추출
+        return mergeAdjacentChunks(expandedCandidates, topK)
+    }
+
+    /**
+     * 같은 문서의 인접 청크를 병합하여 하나의 완전한 텍스트로 합침.
+     * 인접하지 않은 청크는 개별 항목으로 유지.
+     */
+    private fun mergeAdjacentChunks(
+        candidates: List<Pair<Int, Float>>,
+        topK: Int
+    ): List<RagChunk> {
+        data class ChunkGroup(
+            val indices: MutableList<Int>,
+            val maxScore: Float,
+            val docId: String
+        )
+
+        val groups = mutableListOf<ChunkGroup>()
+
+        for ((idx, score) in candidates) {
+            val chunk = dataPackLoader.chunks[idx]
+            val chunkNum = chunk.chunkId.substringAfterLast("_c").toIntOrNull()
+
+            // 기존 그룹 중 같은 문서이면서 인접한 그룹 탐색
+            val matchingGroup = if (chunkNum != null) {
+                groups.find { group ->
+                    group.docId == chunk.docId && group.indices.any { gIdx ->
+                        areAdjacentChunks(dataPackLoader.chunks[gIdx].chunkId, chunk.chunkId)
+                    }
+                }
+            } else null
+
+            if (matchingGroup != null) {
+                matchingGroup.indices.add(idx)
+            } else {
+                groups.add(ChunkGroup(mutableListOf(idx), score, chunk.docId))
+            }
+        }
+
+        // 그룹을 최고 점수순 정렬 후 상위 K개 선택
+        val topGroups = groups
+            .sortedByDescending { it.maxScore }
+            .take(topK)
+
+        return topGroups.map { group ->
+            // 그룹 내 청크를 chunkId 순으로 정렬하여 병합
+            val sortedIndices = group.indices.sortedBy { idx ->
+                dataPackLoader.chunks[idx].chunkId.substringAfterLast("_c").toIntOrNull() ?: 0
+            }
+            val baseChunk = dataPackLoader.chunks[sortedIndices.first()]
+            val mergedContent = sortedIndices.joinToString("\n") { idx ->
+                dataPackLoader.chunks[idx].content
+            }
+
+            Log.d("RetrievalManager", "Merged group: docId=${group.docId}, chunks=${sortedIndices.size}, score=${group.maxScore}, title=${baseChunk.docTitle}")
+
+            baseChunk.copy(content = mergedContent)
         }
     }
 
